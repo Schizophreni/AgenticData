@@ -40,6 +40,7 @@ MUIR_RUN = "run_mcq_live_muir"
 MUIR_RECIPE = "rec_mcq_live_muir"
 ICONQA_RUN = "run_mcq_live_iconqa"
 ICONQA_RECIPE = "rec_mcq_live_iconqa"
+ICONQA_STATUS = ROOT / "var/iconqa_10k.status.json"
 
 # Samples manually removed after review. Keep them out when the live view is
 # rebuilt from the immutable base import.
@@ -99,6 +100,7 @@ def sync_run(
     task_label: str,
     target_hint: int | None = None,
     include_source_rejected: bool = False,
+    supervisor_status_path: Path | None = None,
 ) -> None:
     dst = connect(MAIN)
     src = connect(MAIN)
@@ -241,6 +243,21 @@ def sync_run(
         live = any(batch.execute(
             "SELECT 1 FROM runs WHERE status='running' ORDER BY created_at DESC LIMIT 1").fetchone()
             for batch in batches)
+        # A shard supervisor briefly has no running database row while it advances
+        # the cursor and launches the next child. Preserve the live frontend state
+        # across that intentional handoff.
+        if supervisor_status_path and supervisor_status_path.exists():
+            try:
+                supervisor = json.loads(supervisor_status_path.read_text())
+                live = live or (
+                    supervisor.get("phase") in {
+                        "running", "between_shards", "waiting_for_models", "retrying_shard",
+                    }
+                    and int(supervisor.get("accepted", 0))
+                    < int(supervisor.get("target", target_hint or 0))
+                )
+            except (OSError, ValueError, TypeError):
+                pass
         # The standalone generator performs Visual Gate before inserting its run row.
         # Keep the dedicated frontend task visibly running during that pre-run phase.
         if target_hint and batches and batch_run_count == 0:
@@ -302,6 +319,7 @@ def main() -> None:
         task_label="IconQA multi-image MCQ — benchmark-aligned Diagram Understanding",
         target_hint=10000,
         include_source_rejected=True,
+        supervisor_status_path=ICONQA_STATUS,
     )
 
 
