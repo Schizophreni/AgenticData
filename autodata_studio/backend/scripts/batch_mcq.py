@@ -1000,14 +1000,25 @@ async def main():
             f"RESUME skipped={len(accepted_doc_ids)} accepted docs "
             f"hash_conflicts={hash_skipped}; remaining={len(docs)}"
         )
+    # Small post-dedup shards are commonly 8-17 documents. Reusing the old
+    # ``i % 10 in (0, 1, 2)`` rule in every shard over-allocated Chinese:
+    # e.g. a 13-document shard received six Chinese items (46%), because both
+    # 0..2 and 10..12 matched. Allocate one rounded 30% quota per actual shard
+    # and spread those positions evenly instead.
+    zh_quota = round(len(docs) * 0.30)
     for i, d in enumerate(docs):
         # IconQA/MuirBench's original 50% minimal-text mutation is easy to game.
         # Keep only 20% none-of-above in this batch; QV still requires every
         # substantive choice to be visibly contradicted.
         d["_mode"] = "unans" if i % (5 if DATASET_MODE == "iconqa" else 3) == 0 else "ans"
-        # Every ten inputs contain exactly seven English and three Chinese items.
-        # Keeping this deterministic makes resumable shards reproducible.
-        d["_language"] = "zh" if i % 10 in (0, 1, 2) else "en"
+        # Keep the 70% English / 30% Chinese target deterministic under resume.
+        # The cumulative-floor comparison selects exactly zh_quota positions,
+        # distributed across the shard rather than clustered at its beginning.
+        is_zh = (
+            ((i + 1) * zh_quota) // len(docs) > (i * zh_quota) // len(docs)
+            if docs else False
+        )
+        d["_language"] = "zh" if is_zh else "en"
         if DATASET_MODE != "iconqa":
             # Match MuirBench's observed option-count mix for free-form Zhihu sources.
             bucket = i % 25
