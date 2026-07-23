@@ -50,7 +50,9 @@ async def _score_mcq_or_judge(judge: LLMClient, cand: dict, images, role,
     """Mechanically score parseable MCQ choices; use the VLM judge only as fallback."""
     key = str(cand.get("correct_answer", "")).strip().upper()[:1]
     options = cand.get("options") or []
-    if key not in "ABCDE" or len(options) != 5:
+    option_count = len(options)
+    valid_letters = "ABCDE"[:option_count]
+    if option_count not in (3, 4, 5) or key not in valid_letters:
         return await _score_rollouts(
             judge, cand["question"], images, cand.get("rubric", []), role,
             answers, run_id, example_id)
@@ -118,7 +120,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
 
         # 3. weak solver rollouts ---------------------------------------------
         _emit(run_id, example_id, "weak", "running", {"round": rnd, "k": cfg.k_weak})
-        is_mcq = len(cand.get("options") or []) == 5
+        is_mcq = len(cand.get("options") or []) in (3, 4, 5)
         weak_ans = await asyncio.gather(*[
             run_solver(clients["weak"], cand["question"], images, is_mcq=is_mcq)
             for _ in range(cfg.k_weak)])
