@@ -1,6 +1,9 @@
 import unittest
 
-from autodata.curation.content_gates import has_unverified_iconqa_clock_reasoning
+from autodata.curation.content_gates import (
+    has_unverified_iconqa_clock_reasoning,
+    sanitize_relation_map_for_generated_task,
+)
 
 
 class ContentGateTest(unittest.TestCase):
@@ -43,6 +46,27 @@ class ContentGateTest(unittest.TestCase):
                 {"source": "IconQA"},
             )
         )
+
+    def test_sanitizes_hidden_original_task_labels(self):
+        original = {
+            "source": "IconQA",
+            "source_question": "What time did they arrive?",
+            "source_answer_index": 2,
+            "relations": [{
+                "evidence": [
+                    "Images 1-4 are visual candidates.",
+                    "For the source task, Image 3 is the annotated correct candidate.",
+                ]
+            }],
+        }
+        cleaned = sanitize_relation_map_for_generated_task(original)
+        self.assertNotIn("source_question", cleaned)
+        self.assertNotIn("source_answer_index", cleaned)
+        self.assertEqual(
+            cleaned["relations"][0]["evidence"],
+            ["Images 1-4 are visual candidates."],
+        )
+        self.assertIn("source_answer_index", original)
 
 
 if __name__ == "__main__":
