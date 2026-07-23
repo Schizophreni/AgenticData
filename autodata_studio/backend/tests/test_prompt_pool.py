@@ -56,6 +56,18 @@ class PromptPoolTest(unittest.TestCase):
         self.assertIn("identical or near-identical", spec.instruction)
         self.assertIn("crop jitter", spec.instruction)
         self.assertIn("never invent", spec.instruction)
+        self.assertIn("per-image truth table", spec.instruction)
+        self.assertIn("exactly one substantive candidate", spec.instruction)
+
+    def test_spatial_prompt_keeps_decisive_evidence_spatial(self):
+        spec = select_prompt(
+            {"source": "IconQA", "allowed_tasks": ["Diagram Understanding"]},
+            {"question": "Which object is above the square?"},
+        )
+        self.assertEqual(spec.id, "iconqa.diagram.spatial.v1")
+        self.assertIn("decisive evidence must be spatial", spec.instruction)
+        self.assertIn("do not substitute color", spec.instruction)
+        self.assertIn("exactly one candidate", spec.instruction)
 
     def test_catalog_ids_are_unique(self):
         catalog = prompt_pool_catalog()

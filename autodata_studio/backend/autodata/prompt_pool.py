@@ -33,7 +33,10 @@ TASK_PROMPTS: dict[str, PromptSpec] = {
         "a difference in size, position, orientation, count, or proportion: use only a shared "
         "multi-image invariant when that satisfies the requested answer mode, otherwise produce "
         "the prescribed indeterminate answer. Treat barely perceptible rendering or crop jitter "
-        "as no difference.",
+        "as no difference. For every conjunction, build an internal per-image truth table for "
+        "each predicate and do not emit it. In answerable mode, exactly one substantive candidate "
+        "must visibly satisfy every conjunct; if zero or multiple candidates do, replace the "
+        "predicates rather than forcing an answer.",
     ),
     "Difference Spotting": PromptSpec(
         "muir.difference_spotting.v1", "Difference Spotting",
@@ -158,7 +161,11 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
     "spatial": PromptSpec(
         "iconqa.diagram.spatial.v1", "Diagram Understanding",
         "Use an explicit frame to compare inside/outside, left/right, above/below, overlap, or "
-        "relative position across images. Make exactly one relation differ in each distractor.",
+        "relative position across images. Make exactly one relation differ in each distractor. "
+        "The decisive evidence must be spatial; do not substitute color, object identity, or "
+        "generic appearance as the target predicate. Internally check the spatial relation for "
+        "every candidate and, in answerable mode, require exactly one candidate to satisfy the "
+        "complete claim before assigning its answer letter.",
     ),
     "pattern": PromptSpec(
         "iconqa.diagram.pattern.v1", "Diagram Understanding",
