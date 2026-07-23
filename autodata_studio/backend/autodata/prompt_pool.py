@@ -97,7 +97,10 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "uncertain. Preserve multi-image difficulty through comparison, not tiny visual details. "
         "Never ask which single image merely has N parts, has all parts shaded, or represents one "
         "stated fraction. Require computing the partition/shading relation for at least two images "
-        "and then applying a pairwise comparison, ordering, difference, or two-condition test.",
+        "and then applying a pairwise comparison, ordering, difference, or two-condition test. "
+        "Keep the stem concise: do not narrate proposed partition counts or shading facts in the "
+        "question. Verify them internally and place only short, visually falsifiable comparisons "
+        "in the options. Limit the solution to two arithmetic/comparison steps.",
     ),
     "geometry": PromptSpec(
         "iconqa.diagram.geometry.v1", "Diagram Understanding",
@@ -111,7 +114,10 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "visually clear; require elimination by two shape cues and do not count rounded edges as "
         "straight polygon sides. Do not ask for the one object with a single distinctive cue such "
         "as a pointed top or curved body. Require a pair/outlier comparison or a conjunction whose "
-        "two independently visible shape relations must be checked across multiple images.",
+        "two independently visible shape relations must be checked across multiple images. Express "
+        "claims positively and limit the solution to two checks. Avoid nested negation, functional "
+        "labels such as 'spout' or 'lid', and exhaustive three-object prose; use only directly "
+        "visible silhouette, face, edge, curvature, and attachment geometry.",
     ),
     "spatial": PromptSpec(
         "iconqa.diagram.spatial.v1", "Diagram Understanding",
