@@ -291,6 +291,14 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                     "or has N total parts. Do not repair this by restating most/fewest "
                     "partitions or all-parts-shaded retrieval."
                 )
+                if "matching raw partition counts" in fraction_shortcut:
+                    feedback += (
+                        " MANDATORY STRUCTURE CHANGE: abandon pair selection entirely "
+                        "for this retry. Use either a complete ordering of every supplied "
+                        "image's derived shaded ratio or a median-ratio task over every "
+                        "supplied image. Do not use 'which pair', 'same number of parts', "
+                        "'equal denominator', or an equivalent phrase anywhere."
+                    )
             _persist_round(
                 round_id, example_id, rnd, cand, {},
                 {"gate": gate, "reason": shortcut},
