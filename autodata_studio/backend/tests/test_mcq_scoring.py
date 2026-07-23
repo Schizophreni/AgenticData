@@ -60,9 +60,19 @@ class McqScoringTest(unittest.IsolatedAsyncioTestCase):
             "Which statement correctly compares the shaded fractions?",
             1.0,
         )
-        self.assertIn("change the ratio operation", feedback)
-        self.assertIn("ordering of all named image ratios", feedback)
-        self.assertIn("pairwise greater-than/less-than", feedback)
+        self.assertIn("MANDATORY FRACTION STRUCTURE SWITCH", feedback)
+        self.assertIn("ordering of the shaded ratios of every supplied image", feedback)
+        self.assertIn("every named image exactly once", feedback)
+
+    def test_fraction_ordering_repeat_forces_pairwise_comparison(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.fraction.v1"},
+            "Order the shaded fractions from smallest to largest.",
+            1.0,
+        )
+        self.assertIn("rejected stem is an ordering task", feedback)
+        self.assertIn("cross-image pairwise comparison statement", feedback)
+        self.assertIn("Do not ask for an ordering", feedback)
 
     async def test_parseable_three_four_and_five_option_answers_skip_vlm_judge(self):
         judge = object()

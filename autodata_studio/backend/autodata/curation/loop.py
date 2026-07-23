@@ -104,15 +104,36 @@ def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float
             "previous predicate with synonyms."
         )
     elif cand.get("prompt_pool_id") == "iconqa.diagram.fraction.v1":
+        prior_stem = re.split(
+            r"\n\s*\n\s*[A-E][\.\)]\s*", str(prior_question or ""), maxsplit=1
+        )[0]
+        ordering_stem = bool(re.search(
+            r"\b(?:order|ordering|smallest\s+to\s+largest|largest\s+to\s+smallest|"
+            r"ascending|descending)\b|排序|从小到大|从大到小",
+            prior_stem,
+            re.IGNORECASE,
+        ))
+        if ordering_stem:
+            feedback += (
+                "\nMANDATORY FRACTION STRUCTURE SWITCH: the rejected stem is an "
+                "ordering task. The replacement must ask which cross-image pairwise "
+                "comparison statement is true. Every substantive option must compare "
+                "at least two named images with >, <, or = semantics. Do not ask for "
+                "an ordering, ranking, smallest-to-largest, or largest-to-smallest."
+            )
+        else:
+            feedback += (
+                "\nMANDATORY FRACTION STRUCTURE SWITCH: the rejected stem is a "
+                "statement-comparison task. Replace it with an ordering of the shaded "
+                "ratios of every supplied image. Every substantive option must give a "
+                "complete ordering containing every named image exactly once. Do not "
+                "reuse 'Which statement correctly compares' or a synonym."
+            )
         feedback += (
-            "\nFor this fraction task, change the ratio operation and stem structure. "
-            "If the previous stem asks which statement compares fractions, ask for "
-            "an ordering of all named image ratios; if it asks for an ordering, use "
-            "cross-image pairwise greater-than/less-than statements. Change the "
-            "comparison direction or named image subset only when the pixels support "
-            "it. Every substantive option must still compare at least two derived "
-            "shaded-part/whole ratios. Do not reuse the generic 'Which statement "
-            "correctly compares...' stem or merely paraphrase it."
+            "\nEvery supplied attachment must participate in at least one substantive "
+            "ratio comparison. Change the comparison direction only when the pixels "
+            "support it, and continue deriving every shaded-part/whole ratio from both "
+            "its numerator and denominator."
         )
     return feedback
 
