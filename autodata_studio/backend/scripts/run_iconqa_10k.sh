@@ -14,6 +14,7 @@ STATUS_PATH="${MCQ_STATUS:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.st
 LOCK_PATH="${MCQ_LOCK:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.lock}"
 TARGET_ACCEPTED="${MCQ_TARGET_ACCEPTED:-10000}"
 SHARD_DOCS="${MCQ_SHARD_DOCS:-50}"
+CHILD_POLL_SECONDS="${MCQ_CHILD_POLL_SECONDS:-10}"
 WEAK_PORT="${MCQ_PRODUCTION_WEAK_PORT:-8104}"
 STRONG_PORT="${MCQ_PRODUCTION_STRONG_PORT:-8105}"
 CHALLENGER_PORT="${MCQ_PRODUCTION_CHALLENGER_PORT:-8110}"
@@ -151,7 +152,7 @@ while true; do
     accepted="$(accepted_count)"
     write_status "running" "${accepted}" "${cursor}" \
       "child_pid=${child_pid} shard_docs=${shard}"
-    sleep 30
+    sleep "${CHILD_POLL_SECONDS}"
   done
   wait "${child_pid}"
   rc=$?
