@@ -44,6 +44,10 @@ ICONQA_MANIFEST = Path(
     "/inspire/hdd/project/video-understanding/public/personal/wran/projects/Zhihu/"
     "autodata_studio/backend/var/iconqa_choose_img_manifest.json"
 )
+ICONQA_AUX_MANIFEST = Path(
+    "/inspire/hdd/project/video-understanding/public/personal/wran/projects/Zhihu/"
+    "autodata_studio/backend/var/iconqa_choose_img_aux_manifest.json"
+)
 DATASET_MODE = os.environ.get("MCQ_DATASET", "zhihu").strip().lower()
 
 
@@ -59,6 +63,48 @@ def _iconqa_muir_overlap() -> set[tuple[str, str]]:
             if isinstance(item, dict) and item.get("pid") and item.get("split"):
                 overlap.add((str(item["split"]), str(item["pid"])))
     return overlap
+
+
+def _iconqa_aux_manifest() -> list[dict]:
+    """Cache val/test choose_img metadata without changing the train prefix."""
+    if ICONQA_AUX_MANIFEST.exists():
+        try:
+            payload = json.loads(ICONQA_AUX_MANIFEST.read_text())
+            if isinstance(payload, list):
+                return payload
+        except (OSError, json.JSONDecodeError):
+            pass
+    manifest: list[dict] = []
+    for split in ("val", "test"):
+        root = ICONQA_DATA / split / "choose_img"
+        if not root.exists():
+            continue
+        for item_dir in root.iterdir():
+            metadata_path = item_dir / "data.json"
+            if not metadata_path.exists():
+                continue
+            try:
+                meta = json.loads(metadata_path.read_text())
+                choices = [item_dir / str(name) for name in meta.get("choices", [])]
+                answer = int(meta.get("answer"))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                continue
+            if len(choices) not in (2, 3, 4) or not all(path.exists() for path in choices):
+                continue
+            if not 0 <= answer < len(choices):
+                continue
+            manifest.append({
+                "split": split,
+                "pid": item_dir.name,
+                "meta": meta,
+                "choices": [path.name for path in choices],
+                "answer": answer,
+            })
+    ICONQA_AUX_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    tmp_manifest = ICONQA_AUX_MANIFEST.with_suffix(".tmp")
+    tmp_manifest.write_text(json.dumps(manifest, ensure_ascii=False))
+    tmp_manifest.replace(ICONQA_AUX_MANIFEST)
+    return manifest
 
 
 def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
@@ -141,7 +187,7 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
             selected.append(pools[choice_count][index])
 
     if start + limit > shuffle_cutover:
-        remaining_pools = {
+        train_suffix_pools = {
             choice_count: sorted(
                 pool[counters[choice_count]:],
                 key=lambda row: hashlib.sha256(
@@ -151,23 +197,73 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
             for choice_count, pool in pools.items()
         }
         suffix_counters = {2: 0, 3: 0, 4: 0}
+        aux_cutover = 6050
+        suffix_end = min(start + limit, aux_cutover)
         suffix_start = max(start, shuffle_cutover)
-        for position in range(shuffle_cutover, start + limit):
+        for position in range(shuffle_cutover, suffix_end):
             bucket = (position - shuffle_cutover) % 25
             choice_count = 2 if bucket < 3 else 3 if bucket < 15 else 4
             index = suffix_counters[choice_count]
             suffix_counters[choice_count] += 1
             if position < suffix_start:
                 continue
-            pool = remaining_pools[choice_count]
+            pool = train_suffix_pools[choice_count]
             if index < len(pool):
                 selected.append(pool[index])
+
+        if start + limit > aux_cutover:
+            aux_pools: dict[int, list[tuple[Path, dict, list[Path], int]]] = {
+                2: [], 3: [], 4: []
+            }
+            for row in _iconqa_aux_manifest():
+                split = str(row["split"])
+                pid = str(row["pid"])
+                if (split, pid) in overlap:
+                    continue
+                meta = row["meta"]
+                if has_unverified_iconqa_clock_reasoning(
+                    str(meta.get("question", "")), {"source": "IconQA"}
+                ):
+                    continue
+                item_dir = ICONQA_DATA / split / "choose_img" / pid
+                choices = [item_dir / str(name) for name in row["choices"]]
+                choice_count = len(choices)
+                if choice_count in aux_pools:
+                    aux_pools[choice_count].append(
+                        (item_dir, meta, choices, int(row["answer"]))
+                    )
+            extended_pools = {
+                choice_count: sorted(
+                    train_suffix_pools[choice_count][suffix_counters[choice_count]:]
+                    + aux_pools[choice_count],
+                    key=lambda row: hashlib.sha256(
+                        (
+                            "iconqa-all-suffix-v2:"
+                            f"{row[0].parent.parent.name}:{row[0].name}"
+                        ).encode()
+                    ).digest(),
+                )
+                for choice_count in pools
+            }
+            extended_counters = {2: 0, 3: 0, 4: 0}
+            extended_start = max(start, aux_cutover)
+            for position in range(aux_cutover, start + limit):
+                bucket = (position - aux_cutover) % 25
+                choice_count = 2 if bucket < 3 else 3 if bucket < 15 else 4
+                index = extended_counters[choice_count]
+                extended_counters[choice_count] += 1
+                if position < extended_start:
+                    continue
+                pool = extended_pools[choice_count]
+                if index < len(pool):
+                    selected.append(pool[index])
 
     docs: list[dict] = []
     label_counts: dict[str, int] = {}
     prompt_counts: dict[str, int] = {}
     for item_dir, meta, choices, answer in selected:
         pid = item_dir.name
+        source_split = item_dir.parent.parent.name
         label = str(meta.get("label", "unknown"))
         # IconQA's image.png is only a horizontal contact sheet containing the
         # same candidates again. Sending it together with choice_*.png duplicates
@@ -178,7 +274,7 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
         relation_map = sanitize_relation_map_for_generated_task({
             "category": "IconQA图选项",
             "source": "IconQA",
-            "source_split": "train",
+            "source_split": source_split,
             "source_pid": pid,
             "source_question": str(meta.get("question", "")).strip(),
             "source_answer_index": answer,
@@ -209,7 +305,7 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
         prompt_spec = select_prompt(relation_map, meta).as_dict()
         prompt_counts[prompt_spec["id"]] = prompt_counts.get(prompt_spec["id"], 0) + 1
         docs.append({
-            "id": f"iconqa_train_{pid}",
+            "id": f"iconqa_{source_split}_{pid}",
             "text": (
                 "IconQA controlled visual-reasoning seed.\n"
                 f"Grade: {meta.get('grade', 'unknown')}; template label: {label}.\n"
