@@ -20,6 +20,13 @@ _FRACTION_COMPARISON_TERMS = re.compile(
     r"|比较|相同|相等|等值|更高|更低|更大|更小|最大|最小|差|排序"
 )
 _IMAGE_REFERENCE = re.compile(r"\bimage\s*(\d+)\b|图\s*(\d+)", re.IGNORECASE)
+_PARTITION_STEM_SHORTCUT = re.compile(
+    r"\b(?:(?:greatest|largest|most|fewest|least|smallest)\s+(?:number\s+of\s+)?"
+    r"(?:equal\s+)?(?:parts?|partitions?)|"
+    r"(?:divided\s+into|has|with)\s+exactly\s+(?:\d+|one|two|three|four|five|six)"
+    r"\s+(?:equal\s+)?(?:parts?|partitions?))\b"
+    r"|最多(?:的)?(?:等份|分区)|最少(?:的)?(?:等份|分区)|恰好(?:被)?分成\s*\d+\s*份"
+)
 
 
 def has_unverified_iconqa_clock_reasoning(
@@ -50,6 +57,12 @@ def fraction_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
         [str(candidate.get("question") or "")]
         + [str(option) for option in (candidate.get("options") or [])]
     ).casefold()
+    stem = re.split(
+        r"\n\s*A\s*[.)、:：]",
+        str(candidate.get("question") or ""),
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].casefold()
     refs = {
         int(left or right)
         for left, right in _IMAGE_REFERENCE.findall(text)
@@ -57,6 +70,11 @@ def fraction_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
     }
     if len(refs) < 2:
         return "fraction task cites fewer than two distinct images"
+    if _PARTITION_STEM_SHORTCUT.search(stem):
+        return (
+            "fraction stem asks for an exact or extreme partition count; adding a "
+            "separate ratio clause does not remove this shortcut"
+        )
     if not _FRACTION_REASONING_TERMS.search(text):
         return (
             "fraction task does not use a shaded-part/whole ratio; partition-count "

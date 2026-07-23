@@ -17,7 +17,7 @@ class ContentGateTest(unittest.TestCase):
             ),
             "options": ["Image 1", "Image 2", "Image 3"],
         }
-        self.assertIn("forbidden shortcut", fraction_shortcut_reason(candidate))
+        self.assertIn("partition count", fraction_shortcut_reason(candidate))
 
     def test_fraction_gate_accepts_cross_image_ratio_comparison(self):
         candidate = {
@@ -29,6 +29,18 @@ class ContentGateTest(unittest.TestCase):
             "options": ["Image 1", "Image 2", "Same fraction"],
         }
         self.assertIsNone(fraction_shortcut_reason(candidate))
+
+    def test_fraction_gate_rejects_partition_superlative_even_with_ratio(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Which image has the greatest number of equal parts, and which shows "
+                "the fraction 1/2 shaded? Compare Image 1, Image 2, and Image 3.\n"
+                "A. Image 1 and Image 2\nB. Image 2 and Image 3"
+            ),
+            "options": ["Image 1 and Image 2", "Image 2 and Image 3"],
+        }
+        self.assertIn("partition count", fraction_shortcut_reason(candidate))
 
     def test_fraction_gate_ignores_other_routes(self):
         self.assertIsNone(fraction_shortcut_reason({
