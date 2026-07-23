@@ -27,6 +27,10 @@ _PARTITION_STEM_SHORTCUT = re.compile(
     r"\s+(?:equal\s+)?(?:parts?|partitions?))\b"
     r"|最多(?:的)?(?:等份|分区)|最少(?:的)?(?:等份|分区)|恰好(?:被)?分成\s*\d+\s*份"
 )
+_DIRECT_IMAGE_RETRIEVAL = re.compile(
+    r"\bwhich\s+(?:of\s+the\s+(?:following|three|four)\s+)?images?\s+(?:shows?|has|is)\b"
+    r"|哪(?:一(?:个|张|幅)?|个|张|幅)图(?:像)?(?:显示|具有|是)"
+)
 
 
 def has_unverified_iconqa_clock_reasoning(
@@ -82,6 +86,32 @@ def fraction_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
         )
     if not _FRACTION_COMPARISON_TERMS.search(text):
         return "fraction task does not compare derived ratios across images"
+    return None
+
+
+def partition_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
+    """Reject partition questions whose answer is a direct single-image lookup."""
+    candidate = candidate or {}
+    if candidate.get("prompt_pool_id") != "iconqa.diagram.partition.v1":
+        return None
+    stem = re.split(
+        r"\n\s*A\s*[.)、:：]",
+        str(candidate.get("question") or ""),
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].casefold()
+    if _DIRECT_IMAGE_RETRIEVAL.search(stem):
+        return (
+            "partition task is a direct single-image retrieval; require a pair/outlier "
+            "or a cross-image statement whose truth depends on multiple images"
+        )
+    refs = {
+        int(left or right)
+        for left, right in _IMAGE_REFERENCE.findall(stem)
+        if left or right
+    }
+    if len(refs) < 2:
+        return "partition task does not explicitly depend on at least two images"
     return None
 
 

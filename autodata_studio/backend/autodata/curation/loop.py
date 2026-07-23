@@ -13,7 +13,7 @@ from ..models import GapConfig
 from ..prompt_pool import select_prompt
 from ..providers.base import LLMClient
 from . import gap
-from .content_gates import fraction_shortcut_reason
+from .content_gates import fraction_shortcut_reason, partition_shortcut_reason
 
 
 def _emit(run_id, example_id, agent, status, payload=None):
@@ -167,7 +167,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                   {"round": rnd, "reason": "semantic_repeat"})
             continue
 
-        shortcut = fraction_shortcut_reason(cand)
+        shortcut = fraction_shortcut_reason(cand) or partition_shortcut_reason(cand)
         if shortcut:
             feedback = (
                 f"Type-specific deterministic gate failed: {shortcut}. "

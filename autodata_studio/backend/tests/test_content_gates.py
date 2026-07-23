@@ -3,6 +3,7 @@ import unittest
 from autodata.curation.content_gates import (
     fraction_shortcut_reason,
     has_unverified_iconqa_clock_reasoning,
+    partition_shortcut_reason,
     sanitize_relation_map_for_generated_task,
 )
 
@@ -47,6 +48,26 @@ class ContentGateTest(unittest.TestCase):
             "prompt_pool_id": "iconqa.diagram.geometry.v1",
             "question": "Which image has the most parts?",
         }))
+
+    def test_partition_gate_rejects_direct_image_retrieval(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.partition.v1",
+            "question": (
+                "Which image shows exactly two regions of equal area? "
+                "Compare Image 1, Image 2, and Image 3."
+            ),
+        }
+        self.assertIn("direct single-image", partition_shortcut_reason(candidate))
+
+    def test_partition_gate_accepts_cross_image_statement(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.partition.v1",
+            "question": (
+                "Compare Image 1, Image 2, and Image 3. Which statement correctly "
+                "identifies the pair whose regions match in area and shape?"
+            ),
+        }
+        self.assertIsNone(partition_shortcut_reason(candidate))
 
     def test_rejects_iconqa_clock_question_without_enumerated_values(self):
         self.assertTrue(
