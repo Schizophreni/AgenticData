@@ -81,6 +81,17 @@ def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float
             "shape, or divider-line number/orientation). Do not reuse the previous "
             "predicate with synonyms."
         )
+    elif cand.get("prompt_pool_id") == "iconqa.diagram.fraction.v1":
+        feedback += (
+            "\nFor this fraction task, change the ratio operation and stem structure. "
+            "If the previous stem asks which statement compares fractions, ask for "
+            "an ordering of all named image ratios; if it asks for an ordering, use "
+            "cross-image pairwise greater-than/less-than statements. Change the "
+            "comparison direction or named image subset only when the pixels support "
+            "it. Every substantive option must still compare at least two derived "
+            "shaded-part/whole ratios. Do not reuse the generic 'Which statement "
+            "correctly compares...' stem or merely paraphrase it."
+        )
     return feedback
 
 

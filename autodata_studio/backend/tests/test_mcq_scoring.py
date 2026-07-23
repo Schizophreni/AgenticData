@@ -43,6 +43,16 @@ class McqScoringTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn("partition task", feedback)
 
+    def test_fraction_repeat_feedback_switches_ratio_operation(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.fraction.v1"},
+            "Which statement correctly compares the shaded fractions?",
+            1.0,
+        )
+        self.assertIn("change the ratio operation", feedback)
+        self.assertIn("ordering of all named image ratios", feedback)
+        self.assertIn("pairwise greater-than/less-than", feedback)
+
     async def test_parseable_three_four_and_five_option_answers_skip_vlm_judge(self):
         judge = object()
         cases = (
