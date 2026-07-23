@@ -31,8 +31,9 @@ _PARTITION_STEM_SHORTCUT = re.compile(
     r"|最多(?:的)?(?:等份|分区)|最少(?:的)?(?:等份|分区)|恰好(?:被)?分成\s*\d+\s*份"
 )
 _MATCHING_PARTITION_COUNT = re.compile(
-    r"\b(?:same|matching|equal)\s+(?:number\s+of\s+)?(?:equal\s+)?"
-    r"(?:parts?|partitions?)\b"
+    r"\b(?:(?:same|matching)\s+(?:number\s+of\s+)?(?:equal\s+)?"
+    r"(?:parts?|partitions?)|equal\s+(?:number|count)\s+of\s+"
+    r"(?:equal\s+)?(?:parts?|partitions?))\b"
     r"|(?:等份|分区|部分)(?:的)?数量相同|相同数量的(?:等份|分区|部分)"
 )
 _DIRECT_IMAGE_RETRIEVAL = re.compile(

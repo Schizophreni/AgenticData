@@ -93,6 +93,21 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIn("matching raw partition counts", fraction_shortcut_reason(candidate))
 
+    def test_fraction_gate_does_not_treat_equal_parts_as_matching_counts(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Considering the equal parts and shaded fractions in Image 1, Image 2, "
+                "and Image 3, which ordering of the derived ratios is correct?"
+            ),
+            "options": [
+                "Image 1 > Image 2 > Image 3",
+                "Image 2 > Image 3 > Image 1",
+                "Image 3 > Image 1 > Image 2",
+            ],
+        }
+        self.assertIsNone(fraction_shortcut_reason(candidate))
+
     def test_fraction_gate_rejects_partition_superlative_even_with_ratio(self):
         candidate = {
             "prompt_pool_id": "iconqa.diagram.fraction.v1",
