@@ -13,6 +13,7 @@ from ..models import GapConfig
 from ..prompt_pool import select_prompt
 from ..providers.base import LLMClient
 from . import gap
+from .content_gates import fraction_shortcut_reason
 
 
 def _emit(run_id, example_id, agent, status, payload=None):
@@ -164,6 +165,23 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
             )
             _emit(run_id, example_id, "round", "improve",
                   {"round": rnd, "reason": "semantic_repeat"})
+            continue
+
+        shortcut = fraction_shortcut_reason(cand)
+        if shortcut:
+            feedback = (
+                f"Type-specific deterministic gate failed: {shortcut}. "
+                "Use both shaded numerator and total-part denominator for at least two "
+                "images, then ask for a derived ratio comparison. Do not repair this by "
+                "restating most/fewest partitions or all-parts-shaded retrieval."
+            )
+            _persist_round(
+                round_id, example_id, rnd, cand, {},
+                {"gate": "fraction_shortcut", "reason": shortcut},
+                "type_gate_fail", feedback,
+            )
+            _emit(run_id, example_id, "round", "improve",
+                  {"round": rnd, "reason": "fraction_shortcut"})
             continue
 
         # 2. quality verifier --------------------------------------------------

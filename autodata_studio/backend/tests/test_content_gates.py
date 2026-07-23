@@ -1,12 +1,41 @@
 import unittest
 
 from autodata.curation.content_gates import (
+    fraction_shortcut_reason,
     has_unverified_iconqa_clock_reasoning,
     sanitize_relation_map_for_generated_task,
 )
 
 
 class ContentGateTest(unittest.TestCase):
+    def test_fraction_gate_rejects_partition_count_retrieval(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Which image has the greatest number of equal parts?\n"
+                "A. Image 1\nB. Image 2\nC. Image 3"
+            ),
+            "options": ["Image 1", "Image 2", "Image 3"],
+        }
+        self.assertIn("forbidden shortcut", fraction_shortcut_reason(candidate))
+
+    def test_fraction_gate_accepts_cross_image_ratio_comparison(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Compare Image 1 and Image 2. Which has the greater fraction of the "
+                "whole shaded?"
+            ),
+            "options": ["Image 1", "Image 2", "Same fraction"],
+        }
+        self.assertIsNone(fraction_shortcut_reason(candidate))
+
+    def test_fraction_gate_ignores_other_routes(self):
+        self.assertIsNone(fraction_shortcut_reason({
+            "prompt_pool_id": "iconqa.diagram.geometry.v1",
+            "question": "Which image has the most parts?",
+        }))
+
     def test_rejects_iconqa_clock_question_without_enumerated_values(self):
         self.assertTrue(
             has_unverified_iconqa_clock_reasoning(

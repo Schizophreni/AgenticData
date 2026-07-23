@@ -10,6 +10,16 @@ _CLOCK_TERMS = re.compile(
     r"\b(?:clock|clocks|hour|hours|minute hand|hour hand|o['’]?clock|what time)\b"
     r"|时钟|钟面|表盘|时针|分针|小时|点钟|几点"
 )
+_FRACTION_REASONING_TERMS = re.compile(
+    r"\b(?:fraction|ratio|proportion|relative to|of the whole|shaded (?:area|portion))\b"
+    r"|比例|分数|几分之|占(?:整个|全体)|涂色部分"
+)
+_FRACTION_COMPARISON_TERMS = re.compile(
+    r"\b(?:compare|same|equal fraction|equivalent|higher|lower|greater|smaller|"
+    r"largest|smallest|difference|order(?:ing)?)\b"
+    r"|比较|相同|相等|等值|更高|更低|更大|更小|最大|最小|差|排序"
+)
+_IMAGE_REFERENCE = re.compile(r"\bimage\s*(\d+)\b|图\s*(\d+)", re.IGNORECASE)
 
 
 def has_unverified_iconqa_clock_reasoning(
@@ -29,6 +39,32 @@ def has_unverified_iconqa_clock_reasoning(
     if relation_map.get("numeric_values"):
         return False
     return bool(_CLOCK_TERMS.search(str(text)))
+
+
+def fraction_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
+    """Explain a routed fraction shortcut that should be rejected pre-VLM."""
+    candidate = candidate or {}
+    if candidate.get("prompt_pool_id") != "iconqa.diagram.fraction.v1":
+        return None
+    text = "\n".join(
+        [str(candidate.get("question") or "")]
+        + [str(option) for option in (candidate.get("options") or [])]
+    ).casefold()
+    refs = {
+        int(left or right)
+        for left, right in _IMAGE_REFERENCE.findall(text)
+        if left or right
+    }
+    if len(refs) < 2:
+        return "fraction task cites fewer than two distinct images"
+    if not _FRACTION_REASONING_TERMS.search(text):
+        return (
+            "fraction task does not use a shaded-part/whole ratio; partition-count "
+            "or all-shaded retrieval is a forbidden shortcut"
+        )
+    if not _FRACTION_COMPARISON_TERMS.search(text):
+        return "fraction task does not compare derived ratios across images"
+    return None
 
 
 def sanitize_relation_map_for_generated_task(
