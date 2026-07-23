@@ -94,7 +94,10 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "Compare ratios rather than raw shaded-piece counts; verify equality of partitions. "
         "Use only crisp, clearly bounded regions and choose a unique visible extreme or ordering. "
         "Avoid equivalent-fraction questions when low resolution makes partition boundaries "
-        "uncertain. Preserve multi-image difficulty through comparison, not tiny visual details.",
+        "uncertain. Preserve multi-image difficulty through comparison, not tiny visual details. "
+        "Never ask which single image merely has N parts, has all parts shaded, or represents one "
+        "stated fraction. Require computing the partition/shading relation for at least two images "
+        "and then applying a pairwise comparison, ordering, difference, or two-condition test.",
     ),
     "geometry": PromptSpec(
         "iconqa.diagram.geometry.v1", "Diagram Understanding",
@@ -106,7 +109,9 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "Compare the visible silhouette and component geometry of real objects across all "
         "candidates. Describe cylindrical, spherical, conical, or box-like appearance only when "
         "visually clear; require elimination by two shape cues and do not count rounded edges as "
-        "straight polygon sides.",
+        "straight polygon sides. Do not ask for the one object with a single distinctive cue such "
+        "as a pointed top or curved body. Require a pair/outlier comparison or a conjunction whose "
+        "two independently visible shape relations must be checked across multiple images.",
     ),
     "spatial": PromptSpec(
         "iconqa.diagram.spatial.v1", "Diagram Understanding",
