@@ -31,6 +31,9 @@ _DIRECT_IMAGE_RETRIEVAL = re.compile(
     r"\bwhich\s+(?:of\s+the\s+(?:following|three|four)\s+)?images?\s+(?:shows?|has|is)\b"
     r"|哪(?:一(?:个|张|幅)?|个|张|幅)图(?:像)?(?:显示|具有|是)"
 )
+_PAIR_STEM = re.compile(
+    r"\bwhich\s+pair\s+of\s+images?\b|哪(?:一)?对图(?:像)?"
+)
 
 
 def has_unverified_iconqa_clock_reasoning(
@@ -94,12 +97,14 @@ def partition_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
     candidate = candidate or {}
     if candidate.get("prompt_pool_id") != "iconqa.diagram.partition.v1":
         return None
-    stem = re.split(
+    question = str(candidate.get("question") or "")
+    question_parts = re.split(
         r"\n\s*A\s*[.)、:：]",
-        str(candidate.get("question") or ""),
+        question,
         maxsplit=1,
         flags=re.IGNORECASE,
-    )[0].casefold()
+    )
+    stem = question_parts[0].casefold()
     if _DIRECT_IMAGE_RETRIEVAL.search(stem):
         return (
             "partition task is a direct single-image retrieval; require a pair/outlier "
@@ -110,6 +115,28 @@ def partition_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
         for left, right in _IMAGE_REFERENCE.findall(stem)
         if left or right
     }
+    # A pair-selection stem can refer generically to "which pair" while the concrete
+    # cross-image dependencies live in its options. Accept that form only when at least
+    # two alternatives each name a real pair and the alternatives cover >=3 images.
+    option_texts = [str(option) for option in (candidate.get("options") or [])]
+    if not option_texts and len(question_parts) == 2:
+        option_texts = re.split(
+            r"\n\s*[B-E]\s*[.)、:：]",
+            question_parts[1],
+            flags=re.IGNORECASE,
+        )
+    option_ref_sets = [
+        {
+            int(left or right)
+            for left, right in _IMAGE_REFERENCE.findall(option)
+            if left or right
+        }
+        for option in option_texts
+    ]
+    pair_options = [option_refs for option_refs in option_ref_sets if len(option_refs) >= 2]
+    pair_refs = set().union(*pair_options) if pair_options else set()
+    if _PAIR_STEM.search(stem) and len(pair_options) >= 2 and len(pair_refs) >= 3:
+        return None
     if len(refs) < 2:
         return "partition task does not explicitly depend on at least two images"
     return None

@@ -69,6 +69,30 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIsNone(partition_shortcut_reason(candidate))
 
+    def test_partition_gate_accepts_pair_stem_with_cross_image_options(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.partition.v1",
+            "question": "Which pair of images shows the same partition property?",
+            "options": [
+                "Image 1 and Image 2",
+                "Image 1 and Image 3",
+                "Image 2 and Image 3",
+                "Cannot be determined from the given images",
+            ],
+        }
+        self.assertIsNone(partition_shortcut_reason(candidate))
+
+    def test_partition_gate_rejects_pair_stem_without_real_pair_options(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.partition.v1",
+            "question": "Which pair of images shows the same partition property?",
+            "options": ["Image 1", "Image 2", "Image 3"],
+        }
+        self.assertIn(
+            "does not explicitly depend",
+            partition_shortcut_reason(candidate),
+        )
+
     def test_rejects_iconqa_clock_question_without_enumerated_values(self):
         self.assertTrue(
             has_unverified_iconqa_clock_reasoning(
