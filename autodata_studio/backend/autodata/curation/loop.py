@@ -132,11 +132,17 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
 
         weak_ok, weak_reason = gap.weak_gate(cfg, weak_scores)
         if not weak_ok:                              # compute-saver: skip strong
+            rejected_stem = str(cand.get("question", "")).strip()
             feedback = (
                 f"Too easy for Weak: {weak_reason}. Regenerate a materially different "
-                "question from a deeper cross-image reasoning angle. Require combining "
-                "evidence from at least two images; do not merely paraphrase the prior stem "
-                "or make distractors obscure."
+                "question from a deeper cross-image reasoning angle. The rejected question "
+                f"was:\n{rejected_stem}\n\n"
+                "Do not preserve its target object, decisive attribute, relation structure, "
+                "or answer layout. Merely paraphrasing it or shuffling its options is another "
+                "failure. Require a new two-step elimination, conjunction, ordering, or "
+                "pair/set comparison that combines evidence from at least two images. Keep "
+                "every distractor visibly checkable; difficulty must come from reasoning, "
+                "not obscure details."
             )
             _persist_round(round_id, example_id, rnd, cand,
                            qv, {"weak_avg": weak_avg}, "too_easy", feedback)
