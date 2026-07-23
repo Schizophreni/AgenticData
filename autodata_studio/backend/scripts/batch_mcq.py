@@ -22,6 +22,7 @@ sys.path.insert(0, BACKEND)
 
 from autodata import db, events
 from autodata.models import GapConfig, RoleBinding, default_role_cfg
+from autodata.option_schedule import option_count_schedule
 from autodata.prompt_pool import select_prompt
 from autodata.providers import build_client
 from autodata.recipe import recipe_builder, source_profiler, grounding
@@ -169,8 +170,9 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
             int(row[0].name),
         ))
 
-    # Match MuirBench's option mix at the source: 3 options=12%, 4=48%, 5=40%.
-    # Since the final textual option is reserved, this selects 2/3/4 visual crops.
+    # Preserve the historical 2/3/4 visual-crop mix. Textual option count is now
+    # allocated independently after deduplication; relational answer alternatives
+    # do not need a one-to-one correspondence with images.
     # The legacy grade/question-length ordering groups near-identical templates
     # together. Global image-hash dedupe consequently discarded 80%+ of several
     # consecutive shards. Preserve every historical cursor mapping, then switch
@@ -250,14 +252,27 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
             extended_start = max(start, aux_cutover)
             for position in range(aux_cutover, start + limit):
                 bucket = (position - aux_cutover) % 25
-                choice_count = 2 if bucket < 3 else 3 if bucket < 15 else 4
-                index = extended_counters[choice_count]
-                extended_counters[choice_count] += 1
-                if position < extended_start:
-                    continue
-                pool = extended_pools[choice_count]
-                if index < len(pool):
-                    selected.append(pool[index])
+                desired_count = 2 if bucket < 3 else 3 if bucket < 15 else 4
+                # The four-crop pool is naturally the smallest and is exhausted
+                # around cursor 15.8k. Dropping those weighted slots reduced each
+                # 50-item source window to 30 items and would eventually starve the
+                # 10k run. Fall back deterministically to an unused item from another
+                # crop-count pool. Simulating every prior position keeps cursor
+                # mappings stable and prevents reuse across shards.
+                fallback_order = {
+                    2: (2, 3, 4),
+                    3: (3, 2, 4),
+                    4: (4, 3, 2),
+                }[desired_count]
+                for choice_count in fallback_order:
+                    index = extended_counters[choice_count]
+                    pool = extended_pools[choice_count]
+                    if index >= len(pool):
+                        continue
+                    extended_counters[choice_count] += 1
+                    if position >= extended_start:
+                        selected.append(pool[index])
+                    break
 
     docs: list[dict] = []
     label_counts: dict[str, int] = {}
@@ -323,8 +338,8 @@ def _load_iconqa_docs(limit: int, start: int = 0) -> list[dict]:
             "_gate_category": "IconQA图选项",
             "_source_metadata": meta,
             "_prompt_spec": prompt_spec,
-            # One textual choice per visual candidate plus the reserved final
-            # none/cannot-determine choice gives exactly 3-5 MCQ options.
+            # This is a default only. The production loop below assigns the
+            # benchmark option-count schedule independently of image count.
             "_option_count": len(images) + 1,
         })
         label_counts[label] = label_counts.get(label, 0) + 1
@@ -992,6 +1007,10 @@ async def main():
     # 0..2 and 10..12 matched. Allocate one rounded 30% quota per actual shard
     # and spread those positions evenly instead.
     zh_quota = round(len(docs) * 0.30)
+    iconqa_option_counts = (
+        option_count_schedule(len(docs), f"iconqa:{start}")
+        if DATASET_MODE == "iconqa" else []
+    )
     for i, d in enumerate(docs):
         # IconQA/MuirBench's original 50% minimal-text mutation is easy to game.
         # Keep only 20% none-of-above in this batch; QV still requires every
@@ -1005,7 +1024,9 @@ async def main():
             if docs else False
         )
         d["_language"] = "zh" if is_zh else "en"
-        if DATASET_MODE != "iconqa":
+        if DATASET_MODE == "iconqa":
+            d["_option_count"] = iconqa_option_counts[i]
+        else:
             # Match MuirBench's observed option-count mix for free-form Zhihu sources.
             bucket = i % 25
             d["_option_count"] = 3 if bucket < 3 else 4 if bucket < 15 else 5
