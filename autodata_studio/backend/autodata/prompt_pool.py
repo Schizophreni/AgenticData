@@ -91,7 +91,10 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
     "fraction": PromptSpec(
         "iconqa.diagram.fraction.v1", "Diagram Understanding",
         "Read both the number of equal partitions and the number visibly shaded in each image. "
-        "Compare ratios rather than raw shaded-piece counts; verify equality of partitions.",
+        "Compare ratios rather than raw shaded-piece counts; verify equality of partitions. "
+        "Use only crisp, clearly bounded regions and choose a unique visible extreme or ordering. "
+        "Avoid equivalent-fraction questions when low resolution makes partition boundaries "
+        "uncertain. Preserve multi-image difficulty through comparison, not tiny visual details.",
     ),
     "geometry": PromptSpec(
         "iconqa.diagram.geometry.v1", "Diagram Understanding",
