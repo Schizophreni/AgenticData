@@ -1093,7 +1093,6 @@ async def main():
         "FROM examples e LEFT JOIN rounds r ON r.example_id=e.id AND r.decision='accept' "
         "WHERE e.status='accepted' ORDER BY e.created_at")
     out = os.environ.get("MCQ_OUTPUT", os.path.join(_SP, "batch_mcq_accepted.jsonl"))
-    from collections import Counter
     types, ans, letters = Counter(), Counter(), Counter()
     with open(out, "w") as f:
         for e in rows:
