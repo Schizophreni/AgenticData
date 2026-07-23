@@ -27,7 +27,13 @@ TASK_PROMPTS: dict[str, PromptSpec] = {
     "Diagram Understanding": PromptSpec(
         "muir.diagram.generic.v1", "Diagram Understanding",
         "Compare two directly visible diagram attributes across multiple images. Prefer a "
-        "conjunction, ranking, or elimination chain; do not reuse an original answer position.",
+        "conjunction, ranking, or elimination chain; do not reuse an original answer position. "
+        "Before proposing any comparison, explicitly verify internally that the claimed visual "
+        "variation actually exists. If candidates are identical or near-identical, never invent "
+        "a difference in size, position, orientation, count, or proportion: use only a shared "
+        "multi-image invariant when that satisfies the requested answer mode, otherwise produce "
+        "the prescribed indeterminate answer. Treat barely perceptible rendering or crop jitter "
+        "as no difference.",
     ),
     "Difference Spotting": PromptSpec(
         "muir.difference_spotting.v1", "Difference Spotting",

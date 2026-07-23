@@ -47,6 +47,16 @@ class PromptPoolTest(unittest.TestCase):
         )
         self.assertEqual(spec.id, "muir.difference_spotting.v1")
 
+    def test_generic_diagram_prompt_blocks_invented_near_duplicate_differences(self):
+        spec = select_prompt(
+            {"source": "IconQA", "allowed_tasks": ["Diagram Understanding"]},
+            {"question": "Choose the matching diagram."},
+        )
+        self.assertEqual(spec.id, "muir.diagram.generic.v1")
+        self.assertIn("identical or near-identical", spec.instruction)
+        self.assertIn("crop jitter", spec.instruction)
+        self.assertIn("never invent", spec.instruction)
+
     def test_catalog_ids_are_unique(self):
         catalog = prompt_pool_catalog()
         self.assertEqual(len({item["id"] for item in catalog}), len(catalog))
