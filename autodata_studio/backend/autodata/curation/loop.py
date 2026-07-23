@@ -167,21 +167,37 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                   {"round": rnd, "reason": "semantic_repeat"})
             continue
 
-        shortcut = fraction_shortcut_reason(cand) or partition_shortcut_reason(cand)
+        fraction_shortcut = fraction_shortcut_reason(cand)
+        partition_shortcut = partition_shortcut_reason(cand)
+        shortcut = fraction_shortcut or partition_shortcut
         if shortcut:
-            feedback = (
-                f"Type-specific deterministic gate failed: {shortcut}. "
-                "Use both shaded numerator and total-part denominator for at least two "
-                "images, then ask for a derived ratio comparison. Do not repair this by "
-                "restating most/fewest partitions or all-parts-shaded retrieval."
-            )
+            if partition_shortcut:
+                gate = "partition_shortcut"
+                feedback = (
+                    f"Type-specific deterministic gate failed: {partition_shortcut}. "
+                    "Keep this as partition geometry, without shading, fractions, "
+                    "numerators, or denominators. Ask which pair shares a visible "
+                    "division property, which image is the outlier relative to two "
+                    "others, or which cross-image statement is true. The answer must "
+                    "require checking at least two named images; do not ask which one "
+                    "image merely shows equal parts."
+                )
+            else:
+                gate = "fraction_shortcut"
+                feedback = (
+                    f"Type-specific deterministic gate failed: {fraction_shortcut}. "
+                    "Use both shaded numerator and total-part denominator for at least "
+                    "two images, then ask for a derived ratio comparison. Do not repair "
+                    "this by restating most/fewest partitions or all-parts-shaded "
+                    "retrieval."
+                )
             _persist_round(
                 round_id, example_id, rnd, cand, {},
-                {"gate": "fraction_shortcut", "reason": shortcut},
+                {"gate": gate, "reason": shortcut},
                 "type_gate_fail", feedback,
             )
             _emit(run_id, example_id, "round", "improve",
-                  {"round": rnd, "reason": "fraction_shortcut"})
+                  {"round": rnd, "reason": gate})
             continue
 
         # 2. quality verifier --------------------------------------------------
