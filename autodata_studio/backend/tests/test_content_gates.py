@@ -102,6 +102,19 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIsNone(partition_shortcut_reason(candidate))
 
+    def test_partition_gate_accepts_generic_statement_stem_with_pair_claims(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.partition.v1",
+            "question": "以下哪项跨图比较陈述是正确的？",
+            "options": [
+                "图2和图3都被一条垂直线分割，且左右两部分面积相等",
+                "图1和图3都被分成两个区域，且分割线都是水平的",
+                "图1和图2都被分成四个形状相同的区域",
+                "无法根据给定图片确定",
+            ],
+        }
+        self.assertIsNone(partition_shortcut_reason(candidate))
+
     def test_partition_gate_rejects_pair_stem_without_real_pair_options(self):
         candidate = {
             "prompt_pool_id": "iconqa.diagram.partition.v1",

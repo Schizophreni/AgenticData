@@ -116,9 +116,10 @@ def partition_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
         for left, right in _IMAGE_REFERENCE.findall(stem)
         if left or right
     }
-    # A pair-selection stem can refer generically to "which pair" while the concrete
-    # cross-image dependencies live in its options. Accept that form only when at least
-    # two alternatives each name a real pair and the alternatives cover >=3 images.
+    # Pair-selection and statement-selection stems can refer generically to a pair or
+    # a cross-image claim while the concrete dependencies live in their options.
+    # Accept either form when at least two alternatives each cite multiple images and
+    # the alternatives collectively cover >=3 images.
     option_texts = [str(option) for option in (candidate.get("options") or [])]
     if not option_texts and len(question_parts) == 2:
         option_texts = re.split(
@@ -136,7 +137,7 @@ def partition_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
     ]
     pair_options = [option_refs for option_refs in option_ref_sets if len(option_refs) >= 2]
     pair_refs = set().union(*pair_options) if pair_options else set()
-    if _PAIR_STEM.search(stem) and len(pair_options) >= 2 and len(pair_refs) >= 3:
+    if len(pair_options) >= 2 and len(pair_refs) >= 3:
         return None
     if len(refs) < 2:
         return "partition task does not explicitly depend on at least two images"
