@@ -202,9 +202,14 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                 feedback = (
                     f"Type-specific deterministic gate failed: {fraction_shortcut}. "
                     "Use both shaded numerator and total-part denominator for at least "
-                    "two images, then ask for a derived ratio comparison. Do not repair "
-                    "this by restating most/fewest partitions or all-parts-shaded "
-                    "retrieval."
+                    "two images, then ask for a derived ratio comparison. Use one of "
+                    "these structures: 'Which statement correctly compares the shaded "
+                    "fractions of Image 1, Image 2, and Image 3?' or 'Which ordering of "
+                    "the named image ratios is correct?'. Every substantive option must "
+                    "make a cross-image ratio comparison. Never ask which image or pair "
+                    "represents one stated fraction, has N shaded parts, or has N total "
+                    "parts. Do not repair this by restating most/fewest partitions or "
+                    "all-parts-shaded retrieval."
                 )
             _persist_round(
                 round_id, example_id, rnd, cand, {},

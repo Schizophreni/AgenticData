@@ -103,7 +103,11 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "in the options. Limit the solution to two arithmetic/comparison steps. Every fraction "
         "question must use both the shaded-part numerator and total-part denominator for each "
         "compared image. Never rank or select images by total partition count alone, including "
-        "most/fewest or greatest/least partition questions.",
+        "most/fewest or greatest/least partition questions. The stem MUST ask either which "
+        "cross-image statement correctly orders/compares the shaded fractions, or which ordering "
+        "of at least two named image ratios is correct. Every substantive option must state a "
+        "cross-image ratio comparison. Never ask which image or pair merely represents a stated "
+        "fraction, has N shaded parts, or has N total parts.",
     ),
     "partition": PromptSpec(
         "iconqa.diagram.partition.v1", "Diagram Understanding",

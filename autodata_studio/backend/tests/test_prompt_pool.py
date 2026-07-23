@@ -20,6 +20,8 @@ class PromptPoolTest(unittest.TestCase):
             {"question": "What fraction of the circle is shaded?"},
         )
         self.assertEqual(spec.id, "iconqa.diagram.fraction.v1")
+        self.assertIn("Every substantive option", spec.instruction)
+        self.assertIn("cross-image ratio comparison", spec.instruction)
         self.assertNotIn("circle is shaded", spec.instruction)
 
     def test_iconqa_family_classifier(self):
