@@ -125,6 +125,19 @@ question. Ignore every generic open-ended-rubric convention. Apply exactly these
    relation, stay within its image subset, require at least two images, and have exactly one
    answer supported by the listed evidence. Reject invented temporal, causal, spatial, or
    functional relations and questions that collapse to a single-image lookup.
+9a. An upstream source_answer_index or statement such as "Image X is the annotated correct
+    candidate" describes the HIDDEN ORIGINAL source task only. It is not evidence that Image X
+    answers the newly generated question. Never copy that source label into the truth table.
+    Independently solve the NEW stem from the attached pixels before assigning supported or
+    contradicted. If the new stem changes a baseline, direction, quantity, or operation from
+    the original task, the source label provides no support at all.
+9b. For clocks, calendars, rulers, scales, charts, counts, or arithmetic transformations,
+    first read and internally record the concrete value shown in every referenced image, then
+    perform the requested operation. Check both direction and magnitude ("before" versus
+    "after", addition versus subtraction). If the computed target is absent from every
+    substantive option, reject a keyed substantive answer. Also reject "Cannot be determined"
+    when the images determine that none of the listed substantive choices is correct; that
+    construction requires answer_type=none_of_above and a final "None of the above is correct".
 10. GROUNDING VALIDATION: map every substantive option claim to pixels, visible text, or explicit
     structure in the attachments and to relation_map evidence. Reject any unsupported
     object name, function, category, or domain interpretation. Color/shape alone never
