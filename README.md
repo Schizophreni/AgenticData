@@ -1,4 +1,4 @@
-# Zhihu 多图 MCQ 数据合成技术报告
+# AgenticData Pipeline
 
 > 文档版本：2026-07-23  
 > 系统：AutoData Studio / Agentic Self-Instruct  
