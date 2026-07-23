@@ -10,6 +10,7 @@ from ..agents.challenger import run_challenger
 from ..agents.judge import run_judge, run_quality_verifier
 from ..agents.solver import run_solver
 from ..models import GapConfig
+from ..prompt_pool import select_prompt
 from ..providers.base import LLMClient
 from . import gap
 
@@ -99,6 +100,17 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                        clients: dict[str, LLMClient], cfg: GapConfig) -> dict:
     """Run one grounding doc through the loop; persist + emit; return outcome."""
     images = doc.get("images", [])
+    relation_map = doc.get("_relation_map") or doc.get("relation_map") or {}
+    source_metadata = doc.get("_source_metadata") or doc.get("source_metadata")
+    prompt_spec = select_prompt(relation_map, source_metadata)
+    type_rubric = (
+        "\n\n=== TYPE-SPECIFIC SYNTHESIS INSTRUCTIONS ===\n"
+        f"Prompt pool route: {prompt_spec.id}\n"
+        f"{prompt_spec.instruction}\n"
+        "These instructions refine but never override grounding, output schema, language, "
+        "option-count, answer-mode, or quality-verification requirements."
+    )
+    generation_rubric = (recipe.get("gen_rubric", "") + type_rubric).strip()
     feedback = None
     last = {}
     last_cand: dict = {"images": images}
@@ -111,7 +123,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
         # 1. challenger --------------------------------------------------------
         try:
             cand = await run_challenger(clients["challenger"], doc,
-                                        recipe.get("gen_rubric", ""), feedback)
+                                        generation_rubric, feedback)
         except Exception as e:                       # noqa: BLE001
             err = f"{type(e).__name__}: {e}"
             _emit(run_id, example_id, "challenger", "failed", {"error": err})
@@ -119,6 +131,8 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                            "challenger_error", err)
             feedback = f"previous generation errored: {e}"
             continue
+        cand["prompt_pool_id"] = prompt_spec.id
+        cand["prompt_pool_task_type"] = prompt_spec.task_type
         rubric = cand.get("rubric", [])
         last_cand = cand
         _emit(run_id, example_id, "challenger", "done",
