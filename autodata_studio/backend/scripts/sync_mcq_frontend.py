@@ -28,12 +28,18 @@ BATCHES = [
     ROOT.parent.parent / "datasets/batch_mcq_v2_auditfix.sqlite3",
 ]
 MUIR_BATCHES = [ROOT.parent.parent / "datasets/batch_mcq_muirbench_v1.sqlite3"]
+ICONQA_BATCHES = [
+    ROOT.parent.parent / "datasets/batch_mcq_iconqa_pilot.sqlite3",
+    ROOT.parent.parent / "datasets/batch_mcq_iconqa_v1.sqlite3",
+]
 EXTRA_JSONL = [SCRATCH / "archive/mcq_continue_start200_7_20260721.jsonl"]
 BASE_RUN = "run_mcq18_import_b6ac83a8aefd"
 MERGED_RUN = "run_mcq_live_merged"
 MERGED_RECIPE = "rec_mcq_live_merged"
 MUIR_RUN = "run_mcq_live_muir"
 MUIR_RECIPE = "rec_mcq_live_muir"
+ICONQA_RUN = "run_mcq_live_iconqa"
+ICONQA_RECIPE = "rec_mcq_live_iconqa"
 
 # Samples manually removed after review. Keep them out when the live view is
 # rebuilt from the immutable base import.
@@ -284,6 +290,16 @@ def main() -> None:
         include_base=False,
         extra_jsonl_paths=[],
         task_label="Zhihu multi-image MCQ — MuirBench taxonomy",
+        target_hint=50,
+        include_source_rejected=True,
+    )
+    sync_run(
+        target_run=ICONQA_RUN,
+        target_recipe=ICONQA_RECIPE,
+        batch_paths=ICONQA_BATCHES,
+        include_base=False,
+        extra_jsonl_paths=[],
+        task_label="IconQA multi-image MCQ — benchmark-aligned Diagram Understanding",
         target_hint=50,
         include_source_rejected=True,
     )

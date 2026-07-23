@@ -41,8 +41,10 @@ class OpenAICompatClient(LLMClient):
             "temperature": self.temperature if temperature is None else temperature,
             "max_tokens": self.max_tokens if max_tokens is None else max_tokens,
         }
-        if self.enable_thinking:                 # Qwen3 vLLM: override served default
-            payload["chat_template_kwargs"] = {"enable_thinking": True}
+        # Send the value explicitly. Omitting the field when False lets a Qwen3
+        # server-side default silently turn thinking back on, wasting hundreds of
+        # tokens on schema-constrained MCQ generation and validation.
+        payload["chat_template_kwargs"] = {"enable_thinking": self.enable_thinking}
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         t0 = time.perf_counter()
         # Retry transport blips, 5xx, and 429 (rate limit) — an unretried one kills the whole

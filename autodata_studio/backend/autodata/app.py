@@ -130,7 +130,8 @@ def list_runs() -> list[dict]:
     """List active curated datasets; older experiment runs stay archived in SQLite."""
     return db.query(
         "SELECT id, recipe_id, target_n, status, accepted, rejected, created_at "
-        "FROM runs WHERE id IN ('run_mcq_live_merged','run_mcq_live_muir') "
+        "FROM runs WHERE id IN "
+        "('run_mcq_live_merged','run_mcq_live_muir','run_mcq_live_iconqa') "
         "ORDER BY created_at DESC"
     )
 

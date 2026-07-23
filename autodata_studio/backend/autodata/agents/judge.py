@@ -57,7 +57,12 @@ async def run_quality_verifier(client: LLMClient, cand: dict, images: list[str])
             obj["feedback"] = ((prior + " ") if prior else "") + \
                 "Required relation validation failed or was omitted: " + ", ".join(failed)
         truth = obj.get("option_truth_table")
-        letters = "ABCD"
+        option_count = len(cand.get("options") or [])
+        all_letters = "ABCDE"[:option_count]
+        # The last letter is reserved for none-of-the-above / insufficient-evidence.
+        # QV truth values describe only substantive choices, so support 3/4/5-option
+        # examples as A-B, A-C, and A-D respectively.
+        letters = all_letters[:-1]
         allowed = {"supported", "contradicted", "unknown"}
         normalized = ({letter: str(truth.get(letter, "")).strip().lower() for letter in letters}
                       if isinstance(truth, dict) else {})
@@ -66,10 +71,10 @@ async def run_quality_verifier(client: LLMClient, cand: dict, images: list[str])
         if set(normalized) != set(letters) or any(v not in allowed for v in normalized.values()):
             truth_error = "option truth table missing or invalid"
         elif answer_type == "none_of_above":
-            truth_error = ("none_of_above requires A-D all contradicted"
+            truth_error = (f"none_of_above requires {letters} all contradicted"
                            if any(v != "contradicted" for v in normalized.values()) else "")
         else:
-            truth_error = ("standard MCQ requires only the annotated A-D answer supported and "
+            truth_error = (f"standard MCQ requires only the annotated {letters} answer supported and "
                            "all distractors contradicted"
                            if correct not in letters or any(
                                normalized[l] != ("supported" if l == correct else "contradicted")
