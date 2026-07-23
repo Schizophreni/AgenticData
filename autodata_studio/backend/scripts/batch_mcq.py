@@ -1093,37 +1093,46 @@ async def main():
         "FROM examples e LEFT JOIN rounds r ON r.example_id=e.id AND r.decision='accept' "
         "WHERE e.status='accepted' ORDER BY e.created_at")
     out = os.environ.get("MCQ_OUTPUT", os.path.join(_SP, "batch_mcq_accepted.jsonl"))
+    out_path = Path(out)
+    tmp_path = out_path.with_name(f".{out_path.name}.tmp.{os.getpid()}")
     types, ans, letters = Counter(), Counter(), Counter()
-    with open(out, "w") as f:
-        for e in rows:
-            cand = json.loads(e["challenger_json"] or "{}")
-            answerable = bool(cand.get("answerable", True))
-            ans["answerable" if answerable else "unanswerable"] += 1
-            types[cand.get("task_type", "unlabeled")] += 1
-            letters[str(cand.get("correct_answer", "?")).strip()[:1]] += 1
-            f.write(json.dumps({
-                "doc_id": e["doc_id"], "task_type": cand.get("task_type", "unlabeled"),
-                "option_count": len(cand.get("options", [])),
-                "image_types": (cand.get("relation_map") or {}).get("image_types", {}),
-                "image_relations": [
-                    relation.get("type") for relation in
-                    (cand.get("relation_map") or {}).get("relations", [])
-                    if isinstance(relation, dict)
-                ],
-                "relation_map": cand.get("relation_map", {}),
-                "prompt_pool_id": cand.get("prompt_pool_id", ""),
-                "prompt_pool_task_type": cand.get("prompt_pool_task_type", ""),
-                "language": cand.get("language", "en"),
-                "answerable": answerable,
-                "answer_type": cand.get("answer_type", "standard"),
-                "question": e["question"], "options": cand.get("options", []),
-                "correct_answer": cand.get("correct_answer", ""),
-                "reference": e["reference"],
-                "rubric": json.loads(e["rubric_json"] or "[]"),
-                "images": json.loads(e["images_json"] or "[]"),
-                "weak_avg": e["weak_avg"], "strong_avg": e["strong_avg"],
-                "gap": e["gap"], "rounds": e["rounds"],
-            }, ensure_ascii=False) + "\n")
+    try:
+        with tmp_path.open("w", encoding="utf-8") as f:
+            for e in rows:
+                cand = json.loads(e["challenger_json"] or "{}")
+                answerable = bool(cand.get("answerable", True))
+                ans["answerable" if answerable else "unanswerable"] += 1
+                types[cand.get("task_type", "unlabeled")] += 1
+                letters[str(cand.get("correct_answer", "?")).strip()[:1]] += 1
+                f.write(json.dumps({
+                    "doc_id": e["doc_id"], "task_type": cand.get("task_type", "unlabeled"),
+                    "option_count": len(cand.get("options", [])),
+                    "image_types": (cand.get("relation_map") or {}).get("image_types", {}),
+                    "image_relations": [
+                        relation.get("type") for relation in
+                        (cand.get("relation_map") or {}).get("relations", [])
+                        if isinstance(relation, dict)
+                    ],
+                    "relation_map": cand.get("relation_map", {}),
+                    "prompt_pool_id": cand.get("prompt_pool_id", ""),
+                    "prompt_pool_task_type": cand.get("prompt_pool_task_type", ""),
+                    "language": cand.get("language", "en"),
+                    "answerable": answerable,
+                    "answer_type": cand.get("answer_type", "standard"),
+                    "question": e["question"], "options": cand.get("options", []),
+                    "correct_answer": cand.get("correct_answer", ""),
+                    "reference": e["reference"],
+                    "rubric": json.loads(e["rubric_json"] or "[]"),
+                    "images": json.loads(e["images_json"] or "[]"),
+                    "weak_avg": e["weak_avg"], "strong_avg": e["strong_avg"],
+                    "gap": e["gap"], "rounds": e["rounds"],
+                }, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, out_path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
     print(f"EXPORTED {len(rows)} accepted -> {out}")
     print("ANSWERABLE MIX:", dict(ans))
     print("CORRECT LETTER MIX:", dict(letters.most_common()))
