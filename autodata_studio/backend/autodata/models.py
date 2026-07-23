@@ -14,6 +14,7 @@ class RoleBinding(BaseModel):
     provider: Provider = "mock"
     model: str = "mock-vlm"
     base_url: Optional[str] = None
+    fallback_base_url: Optional[str] = None      # same model on a redundant endpoint
     api_key_env: Optional[str] = None          # name of env var holding the key
     is_vlm: bool = True
     temperature: float = 1.0

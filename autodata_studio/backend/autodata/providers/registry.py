@@ -13,6 +13,7 @@ def build_client(binding: RoleBinding) -> LLMClient:
               temperature=binding.temperature, max_tokens=binding.max_tokens)
     if binding.provider == "openai_compat":
         return OpenAICompatClient(base_url=binding.base_url,
+                                  fallback_base_url=binding.fallback_base_url,
                                   api_key_env=binding.api_key_env,
                                   enable_thinking=binding.enable_thinking, **kw)
     if binding.provider == "anthropic":

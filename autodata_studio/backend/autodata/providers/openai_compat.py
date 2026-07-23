@@ -15,11 +15,15 @@ from .images import resolve_image
 
 class OpenAICompatClient(LLMClient):
     def __init__(self, model: str, base_url: Optional[str] = None,
+                 fallback_base_url: Optional[str] = None,
                  api_key_env: Optional[str] = None, is_vlm: bool = True,
                  temperature: float = 1.0, max_tokens: int = 2048,
                  enable_thinking: bool = False):
         super().__init__(model, is_vlm, temperature, max_tokens)
         self.base_url = (base_url or "https://api.openai.com/v1").rstrip("/")
+        self.fallback_base_url = (
+            fallback_base_url.rstrip("/") if fallback_base_url else None
+        )
         self.api_key = os.environ.get(api_key_env or "OPENAI_API_KEY", "")
         self.enable_thinking = enable_thinking
         self._client = httpx.AsyncClient(timeout=config.HTTP_TIMEOUT)
@@ -54,6 +58,11 @@ class OpenAICompatClient(LLMClient):
         fresh_connection = False
         for attempt in range(config.HTTP_MAX_RETRIES):
             try:
+                request_base_url = (
+                    self.fallback_base_url
+                    if fresh_connection and self.fallback_base_url
+                    else self.base_url
+                )
                 if fresh_connection:
                     # A local vLLM server can close an idle keep-alive socket while
                     # httpx still has it in the shared pool. Retrying through that
@@ -63,13 +72,13 @@ class OpenAICompatClient(LLMClient):
                     # may be using it concurrently.
                     async with httpx.AsyncClient(timeout=config.HTTP_TIMEOUT) as retry_client:
                         resp = await retry_client.post(
-                            f"{self.base_url}/chat/completions",
+                            f"{request_base_url}/chat/completions",
                             json=payload,
                             headers=headers,
                         )
                 else:
                     resp = await self._client.post(
-                        f"{self.base_url}/chat/completions",
+                        f"{request_base_url}/chat/completions",
                         json=payload,
                         headers=headers,
                     )
@@ -94,7 +103,13 @@ class OpenAICompatClient(LLMClient):
             if attempt < config.HTTP_MAX_RETRIES - 1:
                 await asyncio.sleep(2 ** attempt)
         else:
-            raise last                                # type: ignore[misc]
+            if isinstance(last, httpx.TransportError):
+                raise httpx.TransportError(
+                    f"{self.model} request failed after {config.HTTP_MAX_RETRIES} attempts "
+                    f"(primary={self.base_url}, "
+                    f"fallback={self.fallback_base_url or 'none'}): {last}"
+                ) from last
+            raise last                                  # type: ignore[misc]
         data = resp.json()
         usage = data.get("usage", {})
         return Completion(
