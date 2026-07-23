@@ -7,7 +7,8 @@ from typing import Any
 
 
 _CLOCK_TERMS = re.compile(
-    r"\b(?:clock|clocks|hour|hours|minute hand|hour hand|o['’]?clock|what time)\b"
+    r"\b(?:clock|clocks|hour|hours|minute hand|hour hand|o['’]?clock|what time|"
+    r"digital time|displayed time|time displayed)\b"
     r"|时钟|钟面|表盘|时针|分针|小时|点钟|几点"
 )
 _FRACTION_REASONING_TERMS = re.compile(

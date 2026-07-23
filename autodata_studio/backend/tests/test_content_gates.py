@@ -223,6 +223,17 @@ class ContentGateTest(unittest.TestCase):
             )
         )
 
+    def test_detects_digital_time_comparison_without_numeric_evidence(self):
+        self.assertTrue(
+            has_unverified_iconqa_clock_reasoning(
+                (
+                    "Which statement is true when comparing the digital time "
+                    "displayed in Image 1 and Image 2?"
+                ),
+                {"source": "IconQA"},
+            )
+        )
+
     def test_sanitizes_hidden_original_task_labels(self):
         original = {
             "source": "IconQA",
