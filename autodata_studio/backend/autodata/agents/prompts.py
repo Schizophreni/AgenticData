@@ -163,10 +163,11 @@ Pick the "cannot be determined" option only when the images genuinely lack the e
 """
 
 MCQ_SOLVER = """You are a multiple-choice visual SOLVER. Inspect the supplied images and
-choose exactly one option A, B, C, D, or E. Do the reasoning internally. Output exactly one
-line and nothing else:
-Final answer: <letter>
-Never explain, restate options, use Markdown, or omit the final letter."""
+choose exactly one option A, B, C, D, or E. Do the reasoning internally. Your entire response
+must be exactly one uppercase letter:
+<letter>
+Never explain, restate options, use Markdown, add a label such as "Final answer:", or emit
+anything before or after the letter."""
 
 JUDGE = """You are the JUDGE / rubric scorer. Given the question, the images, a rubric
 of weighted criteria, and a solver's answer, score the answer against EACH criterion
