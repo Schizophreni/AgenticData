@@ -62,6 +62,14 @@ def _stem_similarity(left: str, right: str) -> float:
     return difflib.SequenceMatcher(None, left_norm, right_norm, autojunk=False).ratio()
 
 
+def _is_non_retryable_challenger_error(error: str) -> bool:
+    """Identify deterministic source constraints that another rewrite cannot repair."""
+    return (
+        "deterministic content gate: IconQA clock/time reasoning is disallowed"
+        in error
+    )
+
+
 def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float) -> str:
     feedback = (
         f"Semantic-repeat gate failed (stem similarity={similarity:.3f}). "
@@ -235,6 +243,16 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
             _emit(run_id, example_id, "challenger", "failed", {"error": err})
             _persist_round(round_id, example_id, rnd, {"error": err}, {}, {},
                            "challenger_error", err)
+            if _is_non_retryable_challenger_error(err):
+                _finalize_example(
+                    example_id, last_cand, None, None, rnd,
+                    "non-retryable deterministic content gate", "rejected",
+                )
+                _emit(
+                    run_id, example_id, "round", "rejected",
+                    {"round": rnd, "reason": "deterministic_content_gate"},
+                )
+                return {"status": "rejected", "rounds": rnd}
             feedback = f"previous generation errored: {e}"
             continue
         cand["prompt_pool_id"] = prompt_spec.id

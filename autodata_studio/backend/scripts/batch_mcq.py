@@ -575,23 +575,8 @@ baseline, direction, quantity, or operation.
 ===""".format(relations=json.dumps(relation_map, ensure_ascii=False),
                allowed_tasks=json.dumps(permitted_tasks, ensure_ascii=False),
                option_count=option_count, final_letter=final_letter)
-        type_mode = """
-=== TYPE-SPECIFIC PROMPT POOL ROUTE: {prompt_id} ===
-{instruction}
-This type prompt refines the global rules; it never overrides grounding, option-count,
-language, answer-mode, or quality-verification requirements.
-===""".format(
-            prompt_id=prompt_spec["id"],
-            instruction=prompt_spec["instruction"],
-        )
-        routed_type_mode = (
-            ""
-            if prompt_spec["id"] in (gen_rubric or "")
-            else "\n" + type_mode
-        )
         cand = await orig(client, doc, (gen_rubric or "") + "\n" + ANS_MODE
-                          + "\n" + language_mode + "\n" + relation_mode
-                          + routed_type_mode, feedback)
+                          + "\n" + language_mode + "\n" + relation_mode, feedback)
         cand["language"] = language
         cand["relation_map"] = relation_map
         cand["prompt_pool_id"] = prompt_spec["id"]

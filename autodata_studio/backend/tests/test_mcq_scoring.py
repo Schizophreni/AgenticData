@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from autodata.curation.loop import (
+    _is_non_retryable_challenger_error,
     _score_mcq_or_judge,
     _semantic_repeat_feedback,
     _stem_similarity,
@@ -9,6 +10,15 @@ from autodata.curation.loop import (
 
 
 class McqScoringTest(unittest.IsolatedAsyncioTestCase):
+    def test_unverified_iconqa_clock_gate_is_non_retryable(self):
+        self.assertTrue(_is_non_retryable_challenger_error(
+            "ValueError: deterministic content gate: IconQA clock/time reasoning "
+            "is disallowed unless relation_map.numeric_values enumerates every image value"
+        ))
+        self.assertFalse(_is_non_retryable_challenger_error(
+            "ValueError: challenger returned no question object"
+        ))
+
     def test_semantic_repeat_similarity_ignores_option_shuffle(self):
         first = (
             "Which image shows a shape divided into exactly two equal parts?\n\n"
