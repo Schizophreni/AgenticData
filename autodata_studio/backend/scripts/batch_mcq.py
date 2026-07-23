@@ -2,6 +2,7 @@
 (MuirBench-style pairing). Gap mode = verifiable (binary correctness counting).
 challenger+judge=397B, strong=122B, weak=7B."""
 import asyncio, os, sys, time, json, glob, hashlib
+from collections import Counter
 from pathlib import Path
 
 _SP = str(Path(__file__).resolve().parent)
@@ -1025,8 +1026,13 @@ async def main():
             d["_option_count"] = 3 if bucket < 3 else 4 if bucket < 15 else 5
     n_unans = sum(1 for d in docs if d["_mode"] == "unans")
     n_zh = sum(1 for d in docs if d["_language"] == "zh")
+    fed_prompts = Counter(
+        str((d.get("_prompt_spec") or {}).get("id") or "unrouted")
+        for d in docs
+    )
     print(f"DOCS fed={len(docs)} unans={n_unans} ans={len(docs)-n_unans} "
-          f"language=en:{len(docs)-n_zh},zh:{n_zh}")
+          f"language=en:{len(docs)-n_zh},zh:{n_zh} "
+          f"prompts={json.dumps(dict(sorted(fed_prompts.items())), ensure_ascii=False)}")
     run_manager.load_grounding = lambda _recipe, limit: docs
 
     roles = default_role_cfg()
