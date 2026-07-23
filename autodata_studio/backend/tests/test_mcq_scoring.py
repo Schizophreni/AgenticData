@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from autodata.curation.loop import _score_mcq_or_judge, _stem_similarity
+from autodata.curation.loop import (
+    _score_mcq_or_judge,
+    _semantic_repeat_feedback,
+    _stem_similarity,
+)
 
 
 class McqScoringTest(unittest.IsolatedAsyncioTestCase):
@@ -20,6 +24,24 @@ class McqScoringTest(unittest.IsolatedAsyncioTestCase):
         equality = "Which image shows a shape divided into exactly two equal parts?"
         containment = "Which pair of containers has handles but differs in lid shape?"
         self.assertLess(_stem_similarity(equality, containment), 0.82)
+
+    def test_partition_repeat_feedback_forces_structure_and_predicate_change(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.partition.v1"},
+            "Which pair has two equal regions?",
+            0.95,
+        )
+        self.assertIn("switch question structure", feedback)
+        self.assertIn("cross-image comparison statement", feedback)
+        self.assertIn("change the visible predicate", feedback)
+
+    def test_generic_repeat_feedback_does_not_inject_partition_rules(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.object_shape.v1"},
+            "Which pair has the same silhouette?",
+            0.9,
+        )
+        self.assertNotIn("partition task", feedback)
 
     async def test_parseable_three_four_and_five_option_answers_skip_vlm_judge(self):
         judge = object()

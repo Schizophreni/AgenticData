@@ -62,6 +62,28 @@ def _stem_similarity(left: str, right: str) -> float:
     return difflib.SequenceMatcher(None, left_norm, right_norm, autojunk=False).ratio()
 
 
+def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float) -> str:
+    feedback = (
+        f"Semantic-repeat gate failed (stem similarity={similarity:.3f}). "
+        "The new question preserves the same visual decision as this earlier one:\n"
+        f"{prior_question}\n\n"
+        "Choose a genuinely different relation family and target evidence. Do not "
+        "repair this by shuffling options, changing the answer letter, adding an "
+        "adjective, or restating the same equality/count/orientation test."
+    )
+    if cand.get("prompt_pool_id") == "iconqa.diagram.partition.v1":
+        feedback += (
+            "\nFor this partition task, switch question structure: if the previous "
+            "stem asks for a pair, make every option a cross-image comparison "
+            "statement; if it uses comparison statements, ask for a pair. Also "
+            "change the visible predicate, choosing only what the pixels support "
+            "(for example exact region count, equal-area evidence, congruent region "
+            "shape, or divider-line number/orientation). Do not reuse the previous "
+            "predicate with synonyms."
+        )
+    return feedback
+
+
 async def _score_mcq_or_judge(judge: LLMClient, cand: dict, images, role,
                                answers, run_id, example_id):
     """Mechanically score parseable MCQ choices; use the VLM judge only as fallback."""
@@ -150,14 +172,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
         )
         prior_questions.append(question)
         if prior_match[1] >= 0.82:
-            feedback = (
-                f"Semantic-repeat gate failed (stem similarity={prior_match[1]:.3f}). "
-                "The new question preserves the same visual decision as this earlier one:\n"
-                f"{prior_match[0]}\n\n"
-                "Choose a genuinely different relation family and target evidence. Do not "
-                "repair this by shuffling options, changing the answer letter, adding an "
-                "adjective, or restating the same equality/count/orientation test."
-            )
+            feedback = _semantic_repeat_feedback(cand, prior_match[0], prior_match[1])
             _persist_round(
                 round_id, example_id, rnd, cand, {},
                 {"semantic_similarity": prior_match[1]},
