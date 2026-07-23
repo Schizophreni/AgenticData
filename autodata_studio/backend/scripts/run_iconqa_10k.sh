@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -u
+
+# Resumable IconQA production supervisor. The target counts accepted examples,
+# not attempted source documents. It continues the validated pilot database so
+# accepted pilot examples remain part of the final 10k.
+ROOT_DIR="/inspire/hdd/project/video-understanding/public/personal/wran/projects/Zhihu"
+SCRATCH_DIR="/tmp/claude-0/-inspire-hdd-project-video-understanding-public-personal-wran-projects-Zhihu/8015243a-5b19-453d-b06c-99d1b532e25a/scratchpad"
+BATCH_SCRIPT="${SCRATCH_DIR}/batch_mcq.py"
+DB_PATH="${MCQ_DB:-${ROOT_DIR}/datasets/batch_mcq_iconqa_pilot.sqlite3}"
+OUTPUT_PATH="${MCQ_OUTPUT:-${ROOT_DIR}/datasets/batch_mcq_iconqa_10k_accepted.jsonl}"
+STATE_PATH="${MCQ_STATE:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.cursor}"
+STATUS_PATH="${MCQ_STATUS:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.status.json}"
+LOCK_PATH="${MCQ_LOCK:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.lock}"
+TARGET_ACCEPTED="${MCQ_TARGET_ACCEPTED:-10000}"
+SHARD_DOCS="${MCQ_SHARD_DOCS:-50}"
+
+mkdir -p "$(dirname "${STATE_PATH}")"
+exec 9>"${LOCK_PATH}"
+if ! flock -n 9; then
+  echo "another IconQA 10k supervisor already holds ${LOCK_PATH}" >&2
+  exit 2
+fi
+
+accepted_count() {
+  if [[ ! -f "${DB_PATH}" ]]; then
+    echo 0
+    return
+  fi
+  sqlite3 "${DB_PATH}" \
+    "SELECT count(*) FROM examples WHERE status='accepted';" 2>/dev/null || echo 0
+}
+
+write_status() {
+  local phase="$1" accepted="$2" cursor="$3" note="${4:-}"
+  local tmp="${STATUS_PATH}.tmp"
+  jq -n \
+    --arg phase "${phase}" \
+    --arg note "${note}" \
+    --argjson accepted "${accepted}" \
+    --argjson target "${TARGET_ACCEPTED}" \
+    --argjson cursor "${cursor}" \
+    --arg updated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{phase:$phase,accepted:$accepted,target:$target,cursor:$cursor,note:$note,updated_at:$updated_at}' \
+    >"${tmp}"
+  mv "${tmp}" "${STATUS_PATH}"
+}
+
+models_ready() {
+  local spec port expected body model
+  for spec in \
+    "8104:qwen2.5-vl-7b" \
+    "8105:qwen3-vl-235b" \
+    "8107:qwen3-vl-235b" \
+    "8108:qwen3-vl-235b"; do
+    port="${spec%%:*}"
+    expected="${spec#*:}"
+    body="$(env -u http_proxy -u https_proxy -u all_proxy \
+      -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \
+      curl --noproxy '*' -fsS --max-time 8 \
+      "http://127.0.0.1:${port}/v1/models" 2>/dev/null)" || return 1
+    model="$(jq -r '.data[0].id // empty' <<<"${body}")"
+    [[ "${model}" == *"${expected}"* ]] || return 1
+  done
+}
+
+# The pilot consumes source positions 0-4. A persisted cursor always wins.
+cursor=5
+if [[ -s "${STATE_PATH}" ]]; then
+  read -r cursor <"${STATE_PATH}"
+fi
+[[ "${cursor}" =~ ^[0-9]+$ ]] || cursor=5
+
+# Do not contend with the five-item validation run.
+while tmux has-session -t iconqa-pilot 2>/dev/null; do
+  accepted="$(accepted_count)"
+  write_status "waiting_for_pilot" "${accepted}" "${cursor}" "pilot still running"
+  sleep 30
+done
+
+while true; do
+  accepted="$(accepted_count)"
+  if (( accepted >= TARGET_ACCEPTED )); then
+    write_status "done" "${accepted}" "${cursor}" "target reached"
+    echo "TARGET REACHED accepted=${accepted}/${TARGET_ACCEPTED}"
+    exit 0
+  fi
+
+  if ! models_ready; then
+    write_status "waiting_for_models" "${accepted}" "${cursor}" \
+      "need 8104, 8105, 8107 and 8108"
+    sleep 30
+    continue
+  fi
+
+  remaining=$((TARGET_ACCEPTED - accepted))
+  shard="${SHARD_DOCS}"
+  if (( remaining < shard )); then shard="${remaining}"; fi
+  write_status "running" "${accepted}" "${cursor}" "starting shard_docs=${shard}"
+
+  env -u http_proxy -u https_proxy -u all_proxy \
+    -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \
+    MCQ_DATASET=iconqa \
+    MCQ_RESUME=1 \
+    MCQ_GATE=0 \
+    MCQ_DB="${DB_PATH}" \
+    MCQ_OUTPUT="${OUTPUT_PATH}" \
+    MCQ_DOCS="${shard}" \
+    MCQ_START="${cursor}" \
+    MCQ_MAX_INFLIGHT=2 \
+    MCQ_HTTP_TIMEOUT=600 \
+    MCQ_WEAK_PORT=8104 \
+    MCQ_STRONG_PORT=8105 \
+    MCQ_CHALLENGER_PORT=8107 \
+    MCQ_JUDGE_PORT=8108 \
+    MCQ_CHALLENGER_MAX_TOKENS=512 \
+    MCQ_JUDGE_MAX_TOKENS=512 \
+    python -u "${BATCH_SCRIPT}" &
+  child_pid=$!
+
+  while kill -0 "${child_pid}" 2>/dev/null; do
+    accepted="$(accepted_count)"
+    write_status "running" "${accepted}" "${cursor}" \
+      "child_pid=${child_pid} shard_docs=${shard}"
+    sleep 30
+  done
+  wait "${child_pid}"
+  rc=$?
+
+  if (( rc == 0 )); then
+    cursor=$((cursor + shard))
+    printf '%s\n' "${cursor}" >"${STATE_PATH}"
+    accepted="$(accepted_count)"
+    write_status "between_shards" "${accepted}" "${cursor}" "previous shard completed"
+  else
+    accepted="$(accepted_count)"
+    write_status "retrying_shard" "${accepted}" "${cursor}" "child exit=${rc}"
+    sleep 30
+  fi
+done

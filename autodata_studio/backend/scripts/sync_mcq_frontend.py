@@ -300,7 +300,7 @@ def main() -> None:
         include_base=False,
         extra_jsonl_paths=[],
         task_label="IconQA multi-image MCQ — benchmark-aligned Diagram Understanding",
-        target_hint=50,
+        target_hint=10000,
         include_source_rejected=True,
     )
 

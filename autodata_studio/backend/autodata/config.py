@@ -16,7 +16,8 @@ ZHIHU_IMG_DIRS = [
     Path(p) for p in os.environ.get(
         "ZHIHU_IMG_DIRS",
         "/inspire/qb-ilm2/project/video-understanding/public/lance_hub/Zhihu/download/img:"
-        "/inspire/qb-ilm2/project/video-understanding/public/lance_hub/Zhihu/download/img2",
+        "/inspire/qb-ilm2/project/video-understanding/public/lance_hub/Zhihu/download/img2:"
+        "/inspire/qb-ilm2/project/video-understanding/public/datasets/iconQA/iconqa_data/iconqa",
     ).split(":") if p
 ]
 
