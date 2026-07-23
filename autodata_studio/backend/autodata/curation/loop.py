@@ -10,7 +10,7 @@ from ..agents.challenger import run_challenger
 from ..agents.judge import run_judge, run_quality_verifier
 from ..agents.solver import run_solver
 from ..models import GapConfig
-from ..prompt_pool import select_prompt
+from ..prompt_pool import runtime_prompt_constraints, select_prompt
 from ..providers.base import LLMClient
 from . import gap
 from .content_gates import fraction_shortcut_reason, partition_shortcut_reason
@@ -207,10 +207,13 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
     relation_map = doc.get("_relation_map") or doc.get("relation_map") or {}
     source_metadata = doc.get("_source_metadata") or doc.get("source_metadata")
     prompt_spec = select_prompt(relation_map, source_metadata)
+    runtime_constraints = runtime_prompt_constraints(relation_map)
     type_rubric = (
         "\n\nType-specific synthesis instructions:\n"
         f"{prompt_spec.instruction}\n"
-        "These instructions refine but never override grounding, output schema, language, "
+        + "\n".join(runtime_constraints)
+        + ("\n" if runtime_constraints else "")
+        + "These instructions refine but never override grounding, output schema, language, "
         "option-count, answer-mode, or quality-verification requirements."
     )
     generation_rubric = (recipe.get("gen_rubric", "") + type_rubric).strip()

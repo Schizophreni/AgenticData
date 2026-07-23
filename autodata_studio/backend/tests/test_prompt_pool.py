@@ -5,6 +5,7 @@ from autodata.prompt_pool import (
     TASK_PROMPTS,
     classify_iconqa_family,
     prompt_pool_catalog,
+    runtime_prompt_constraints,
     select_prompt,
 )
 
@@ -72,6 +73,20 @@ class PromptPoolTest(unittest.TestCase):
     def test_catalog_ids_are_unique(self):
         catalog = prompt_pool_catalog()
         self.assertEqual(len({item["id"] for item in catalog}), len(catalog))
+
+    def test_iconqa_without_numeric_values_forbids_clock_generation(self):
+        constraints = runtime_prompt_constraints(
+            {"source": "IconQA", "allowed_tasks": ["Diagram Understanding"]}
+        )
+        self.assertEqual(len(constraints), 1)
+        self.assertIn("Do not generate any clock", constraints[0])
+        self.assertIn("different directly visible cross-image relation", constraints[0])
+
+    def test_verified_numeric_values_do_not_add_clock_constraint(self):
+        constraints = runtime_prompt_constraints(
+            {"source": "IconQA", "numeric_values": {"1": 7, "2": 9}}
+        )
+        self.assertEqual(constraints, [])
 
 
 if __name__ == "__main__":

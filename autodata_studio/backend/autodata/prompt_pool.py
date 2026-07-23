@@ -243,6 +243,22 @@ def select_prompt(
     return TASK_PROMPTS["Diagram Understanding"]
 
 
+def runtime_prompt_constraints(relation_map: dict[str, Any] | None) -> list[str]:
+    """Return source-aware constraints that prevent known deterministic failures."""
+    relation_map = relation_map or {}
+    constraints: list[str] = []
+    if (
+        str(relation_map.get("source", "")).casefold() == "iconqa"
+        and not relation_map.get("numeric_values")
+    ):
+        constraints.append(
+            "Do not generate any clock, clock-hand, displayed-time, hour, or minute "
+            "question for this sample. No verified per-image numeric values are available, "
+            "so choose a different directly visible cross-image relation."
+        )
+    return constraints
+
+
 def prompt_pool_catalog() -> list[dict[str, str]]:
     """Return stable metadata for UI/docs without duplicate fallback entries."""
     specs = list(TASK_PROMPTS.values()) + [
