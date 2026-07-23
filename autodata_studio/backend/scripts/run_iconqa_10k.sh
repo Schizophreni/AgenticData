@@ -5,8 +5,7 @@ set -u
 # not attempted source documents. It continues the validated pilot database so
 # accepted pilot examples remain part of the final 10k.
 ROOT_DIR="/inspire/hdd/project/video-understanding/public/personal/wran/projects/Zhihu"
-SCRATCH_DIR="/tmp/claude-0/-inspire-hdd-project-video-understanding-public-personal-wran-projects-Zhihu/8015243a-5b19-453d-b06c-99d1b532e25a/scratchpad"
-BATCH_SCRIPT="${SCRATCH_DIR}/batch_mcq.py"
+BATCH_SCRIPT="${MCQ_BATCH_SCRIPT:-${ROOT_DIR}/autodata_studio/backend/scripts/batch_mcq.py}"
 DB_PATH="${MCQ_DB:-${ROOT_DIR}/datasets/batch_mcq_iconqa_pilot.sqlite3}"
 OUTPUT_PATH="${MCQ_OUTPUT:-${ROOT_DIR}/datasets/batch_mcq_iconqa_10k_accepted.jsonl}"
 STATE_PATH="${MCQ_STATE:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.cursor}"
