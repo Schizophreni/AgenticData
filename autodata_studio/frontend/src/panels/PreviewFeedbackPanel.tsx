@@ -252,10 +252,7 @@ export default function PreviewFeedbackPanel() {
                   {detail.images.map((src: string, i: number) => (
                     <div
                       key={i}
-                      className={cn(
-                        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-elevated",
-                        i === 0 ? "h-32 w-80" : "size-32"
-                      )}
+                      className="relative flex size-36 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-elevated"
                     >
                       <img
                         src={imageSrc(src)}
