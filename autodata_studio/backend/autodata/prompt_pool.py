@@ -110,8 +110,12 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "Compare whether visible dividing lines create equal-sized regions across multiple "
         "images. Treat this as partition geometry, not fraction arithmetic: do not invent "
         "shading, numerators, or denominators. Require two positive visual checks such as "
-        "equal area plus matching region shape, or identify a pair/outlier from how the "
-        "boundaries divide the whole. Avoid a direct single-image 'shows equal parts' lookup.",
+        "equal area plus matching region shape. The stem MUST use one of two structures: "
+        "(1) ask which PAIR of named images shares a stated partition property, with every "
+        "option naming a pair; or (2) ask which cross-image comparison statement is true, "
+        "with every option making claims about at least two named images. Never ask "
+        "'which image', 'which one', or any equivalent single-image lookup. Internally "
+        "verify that the answer cannot be selected by inspecting only one image.",
     ),
     "geometry": PromptSpec(
         "iconqa.diagram.geometry.v1", "Diagram Understanding",
