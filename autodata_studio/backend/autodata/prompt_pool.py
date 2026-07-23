@@ -105,6 +105,14 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "compared image. Never rank or select images by total partition count alone, including "
         "most/fewest or greatest/least partition questions.",
     ),
+    "partition": PromptSpec(
+        "iconqa.diagram.partition.v1", "Diagram Understanding",
+        "Compare whether visible dividing lines create equal-sized regions across multiple "
+        "images. Treat this as partition geometry, not fraction arithmetic: do not invent "
+        "shading, numerators, or denominators. Require two positive visual checks such as "
+        "equal area plus matching region shape, or identify a pair/outlier from how the "
+        "boundaries divide the whole. Avoid a direct single-image 'shows equal parts' lookup.",
+    ),
     "geometry": PromptSpec(
         "iconqa.diagram.geometry.v1", "Diagram Understanding",
         "Compare at least two visible geometric properties such as shape, side count, line "
@@ -143,8 +151,12 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
 
 _ICONQA_FAMILY_PATTERNS = (
     ("fraction", re.compile(
-        r"\b(?:fraction|half|third|fourth|equal parts?|shaded|numerator|denominator)\b"
-        r"|分数|几分之|平均分|涂色|阴影"
+        r"\b(?:fraction|half|third|fourth|shaded|numerator|denominator)\b"
+        r"|分数|几分之|涂色|阴影"
+    )),
+    ("partition", re.compile(
+        r"\b(?:equal parts?|equally divided|same-sized (?:parts?|regions?))\b"
+        r"|平均分|等分|相等(?:的)?部分"
     )),
     ("counting", re.compile(
         r"\b(?:how many|count|number of|total number|fewer|more objects?)\b"

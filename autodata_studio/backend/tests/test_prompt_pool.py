@@ -30,6 +30,7 @@ class PromptPoolTest(unittest.TestCase):
             "Which object is above the square?": "spatial",
             "What comes next in the pattern?": "pattern",
             "Which line is longer?": "measurement",
+            "Select the picture that shows equal parts.": "partition",
             "Choose the matching diagram.": "generic",
         }
         for question, expected in cases.items():
