@@ -27,12 +27,35 @@ if ! flock -n 9; then
 fi
 
 accepted_count() {
+  local fallback=0 count="" attempt
   if [[ ! -f "${DB_PATH}" ]]; then
-    echo 0
+    if [[ -s "${STATUS_PATH}" ]]; then
+      fallback="$(jq -r '.accepted // 0' "${STATUS_PATH}" 2>/dev/null || echo 0)"
+    fi
+    echo "${fallback}"
     return
   fi
-  sqlite3 "${DB_PATH}" \
-    "SELECT count(*) FROM examples WHERE status='accepted';" 2>/dev/null || echo 0
+  # The frontend sync daemon also reads/writes SQLite. A brief lock must not
+  # make progress jump back to zero or inflate the next shard's remaining
+  # target. Retry, then retain the last published monotonic value.
+  if [[ -s "${STATUS_PATH}" ]]; then
+    fallback="$(jq -r '.accepted // 0' "${STATUS_PATH}" 2>/dev/null || echo 0)"
+  fi
+  [[ "${fallback}" =~ ^[0-9]+$ ]] || fallback=0
+  for attempt in 1 2 3; do
+    count="$(sqlite3 -cmd '.timeout 5000' "${DB_PATH}" \
+      "SELECT count(*) FROM examples WHERE status='accepted';" 2>/dev/null)" || count=""
+    if [[ "${count}" =~ ^[0-9]+$ ]]; then
+      if (( count < fallback )); then
+        echo "${fallback}"
+      else
+        echo "${count}"
+      fi
+      return
+    fi
+    sleep 1
+  done
+  echo "${fallback}"
 }
 
 write_status() {
