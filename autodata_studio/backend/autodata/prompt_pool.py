@@ -98,6 +98,13 @@ ICONQA_PROMPTS: dict[str, PromptSpec] = {
         "Compare at least two visible geometric properties such as shape, side count, line "
         "orientation, partition, or symmetry. Do not infer a property not drawn in the pixels.",
     ),
+    "object_shape": PromptSpec(
+        "iconqa.diagram.object_shape.v1", "Diagram Understanding",
+        "Compare the visible silhouette and component geometry of real objects across all "
+        "candidates. Describe cylindrical, spherical, conical, or box-like appearance only when "
+        "visually clear; require elimination by two shape cues and do not count rounded edges as "
+        "straight polygon sides.",
+    ),
     "spatial": PromptSpec(
         "iconqa.diagram.spatial.v1", "Diagram Understanding",
         "Use an explicit frame to compare inside/outside, left/right, above/below, overlap, or "
@@ -129,6 +136,11 @@ _ICONQA_FAMILY_PATTERNS = (
     ("spatial", re.compile(
         r"\b(?:left|right|above|below|inside|outside|between|overlap|position)\b"
         r"|左边|右边|上方|下方|里面|外面|中间|重叠|位置"
+    )),
+    ("object_shape", re.compile(
+        r"\b(?:object (?:is )?shaped like|shaped like|three-dimensional shape|3d shape|"
+        r"cylinder|sphere|cone|cube|pyramid)\b"
+        r"|物体.*形状|圆柱体|球体|圆锥体|立方体|棱锥"
     )),
     ("geometry", re.compile(
         r"\b(?:shape|triangle|rectangle|square|circle|polygon|side|corner|angle|symmetr)"

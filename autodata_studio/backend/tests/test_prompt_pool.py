@@ -26,6 +26,7 @@ class PromptPoolTest(unittest.TestCase):
         cases = {
             "How many triangles are shown?": "counting",
             "Which rectangle is symmetric?": "geometry",
+            "Which object is shaped like a cylinder?": "object_shape",
             "Which object is above the square?": "spatial",
             "What comes next in the pattern?": "pattern",
             "Which line is longer?": "measurement",
