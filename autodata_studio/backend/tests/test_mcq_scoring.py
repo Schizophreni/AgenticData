@@ -31,9 +31,20 @@ class McqScoringTest(unittest.IsolatedAsyncioTestCase):
             "Which pair has two equal regions?",
             0.95,
         )
-        self.assertIn("switch question structure", feedback)
+        self.assertIn("MANDATORY STRUCTURE SWITCH", feedback)
+        self.assertIn("rejected stem is pair-selection", feedback)
         self.assertIn("cross-image comparison statement", feedback)
+        self.assertIn("Do not use 'Which pair'", feedback)
         self.assertIn("change the visible predicate", feedback)
+
+    def test_partition_statement_repeat_feedback_forces_pair_selection(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.partition.v1"},
+            "Which cross-image comparison statement is true?",
+            0.95,
+        )
+        self.assertIn("uses comparison statements", feedback)
+        self.assertIn("every substantive option must name exactly two images", feedback)
 
     def test_generic_repeat_feedback_does_not_inject_partition_rules(self):
         feedback = _semantic_repeat_feedback(

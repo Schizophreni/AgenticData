@@ -72,14 +72,36 @@ def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float
         "adjective, or restating the same equality/count/orientation test."
     )
     if cand.get("prompt_pool_id") == "iconqa.diagram.partition.v1":
+        prior_stem = re.split(
+            r"\n\s*\n\s*[A-E][\.\)]\s*", str(prior_question or ""), maxsplit=1
+        )[0]
+        pair_stem = bool(re.search(
+            r"\b(?:which|what)\s+(?:pair|two)\b|哪一对|哪两个|哪组",
+            prior_stem,
+            re.IGNORECASE,
+        ))
+        if pair_stem:
+            feedback += (
+                "\nMANDATORY STRUCTURE SWITCH: the rejected stem is pair-selection. "
+                "The replacement stem must begin with 'Which cross-image comparison "
+                "statement' (English) or '以下哪项跨图比较陈述' (Chinese), and every "
+                "substantive option must be a complete claim comparing at least two "
+                "named images. Do not use 'Which pair', 'which two', '哪一对', "
+                "'哪两个', or '哪组' anywhere in the new stem. Returning another "
+                "pair-selection question is not a valid retry."
+            )
+        else:
+            feedback += (
+                "\nMANDATORY STRUCTURE SWITCH: the rejected stem uses comparison "
+                "statements. Replace it with pair-selection: every substantive option "
+                "must name exactly two images, while the stem asks which pair shares "
+                "one visibly checkable partition property."
+            )
         feedback += (
-            "\nFor this partition task, switch question structure: if the previous "
-            "stem asks for a pair, make every option a cross-image comparison "
-            "statement; if it uses comparison statements, ask for a pair. Also "
-            "change the visible predicate, choosing only what the pixels support "
-            "(for example exact region count, equal-area evidence, congruent region "
-            "shape, or divider-line number/orientation). Do not reuse the previous "
-            "predicate with synonyms."
+            "\nAlso change the visible predicate, choosing only what the pixels "
+            "support (for example exact region count, equal-area evidence, congruent "
+            "region shape, or divider-line number/orientation). Do not reuse the "
+            "previous predicate with synonyms."
         )
     elif cand.get("prompt_pool_id") == "iconqa.diagram.fraction.v1":
         feedback += (
