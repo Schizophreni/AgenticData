@@ -17,8 +17,10 @@ _FRACTION_REASONING_TERMS = re.compile(
 )
 _FRACTION_COMPARISON_TERMS = re.compile(
     r"\b(?:compare|same|equal fraction|equivalent|higher|lower|greater|smaller|"
-    r"largest|smallest|difference|order(?:ing)?)\b"
-    r"|比较|相同|相等|等值|更高|更低|更大|更小|最大|最小|差|排序"
+    r"largest|smallest|difference|order(?:ing)?|median|middle|between|outlier|"
+    r"closest)\b"
+    r"|比较|相同|相等|等值|更高|更低|更大|更小|最大|最小|差|排序|中位|居中|"
+    r"介于|异常|最接近"
 )
 _IMAGE_REFERENCE = re.compile(r"\bimage\s*(\d+)\b|图\s*(\d+)", re.IGNORECASE)
 _PARTITION_STEM_SHORTCUT = re.compile(

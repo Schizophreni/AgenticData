@@ -71,8 +71,27 @@ class McqScoringTest(unittest.IsolatedAsyncioTestCase):
             1.0,
         )
         self.assertIn("rejected stem is an ordering task", feedback)
-        self.assertIn("cross-image pairwise comparison statement", feedback)
+        self.assertIn("median-ratio task", feedback)
         self.assertIn("Do not ask for an ordering", feedback)
+
+    def test_fraction_median_repeat_forces_closest_pair(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.fraction.v1"},
+            "Which image has the median shaded fraction?",
+            1.0,
+        )
+        self.assertIn("median or ratio-outlier task", feedback)
+        self.assertIn("smallest absolute difference", feedback)
+        self.assertIn("exactly two images", feedback)
+
+    def test_fraction_closest_pair_repeat_forces_statement(self):
+        feedback = _semantic_repeat_feedback(
+            {"prompt_pool_id": "iconqa.diagram.fraction.v1"},
+            "Which pair has the closest shaded fractions?",
+            1.0,
+        )
+        self.assertIn("closest or equal-ratio pair task", feedback)
+        self.assertIn("cross-image pairwise comparison statement", feedback)
 
     async def test_parseable_three_four_and_five_option_answers_skip_vlm_judge(self):
         judge = object()

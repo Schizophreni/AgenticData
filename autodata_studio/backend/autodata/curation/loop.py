@@ -113,13 +113,40 @@ def _semantic_repeat_feedback(cand: dict, prior_question: str, similarity: float
             prior_stem,
             re.IGNORECASE,
         ))
+        median_stem = bool(re.search(
+            r"\b(?:median|middle|between|unique\s+outlier)\b|中位|居中|介于|唯一异常",
+            prior_stem,
+            re.IGNORECASE,
+        ))
+        closest_pair_stem = bool(re.search(
+            r"\b(?:closest|smallest\s+(?:absolute\s+)?difference|equal-ratio pair|"
+            r"same\s+shaded\s+fraction)\b|最接近|差值最小|比例相同的一对",
+            prior_stem,
+            re.IGNORECASE,
+        ))
         if ordering_stem:
             feedback += (
                 "\nMANDATORY FRACTION STRUCTURE SWITCH: the rejected stem is an "
-                "ordering task. The replacement must ask which cross-image pairwise "
-                "comparison statement is true. Every substantive option must compare "
-                "at least two named images with >, <, or = semantics. Do not ask for "
-                "an ordering, ranking, smallest-to-largest, or largest-to-smallest."
+                "ordering task. Replace it with a median-ratio task over every supplied "
+                "image. The answer must be the image whose derived shaded fraction lies "
+                "between the other ratios; every option must name an image. Do not ask "
+                "for an ordering, ranking, smallest-to-largest, or largest-to-smallest."
+            )
+        elif median_stem:
+            feedback += (
+                "\nMANDATORY FRACTION STRUCTURE SWITCH: the rejected stem is a median "
+                "or ratio-outlier task. Replace it with pair selection: ask which pair "
+                "has equal shaded ratios or the smallest absolute difference between "
+                "their derived ratios. Every substantive option must name exactly two "
+                "images. Do not ask for the median, middle value, or outlier."
+            )
+        elif closest_pair_stem:
+            feedback += (
+                "\nMANDATORY FRACTION STRUCTURE SWITCH: the rejected stem is a closest "
+                "or equal-ratio pair task. Replace it with a true cross-image pairwise "
+                "comparison statement. Every substantive option must compare at least "
+                "two named image ratios with >, <, or = semantics. Do not select a pair "
+                "by equality or absolute difference."
             )
         else:
             feedback += (
@@ -256,14 +283,13 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
                 feedback = (
                     f"Type-specific deterministic gate failed: {fraction_shortcut}. "
                     "Use both shaded numerator and total-part denominator for at least "
-                    "two images, then ask for a derived ratio comparison. Use one of "
-                    "these structures: 'Which statement correctly compares the shaded "
-                    "fractions of Image 1, Image 2, and Image 3?' or 'Which ordering of "
-                    "the named image ratios is correct?'. Every substantive option must "
-                    "make a cross-image ratio comparison. Never ask which image or pair "
-                    "represents one stated fraction, has N shaded parts, or has N total "
-                    "parts. Do not repair this by restating most/fewest partitions or "
-                    "all-parts-shaded retrieval."
+                    "two images, then ask for a derived ratio relation. Use a true "
+                    "cross-image comparison statement, complete ordering, median/outlier "
+                    "over all named ratios, or equal/closest-ratio pair. Every substantive "
+                    "option must encode that cross-image relation. Never ask which image "
+                    "or pair merely represents one stated fraction, has N shaded parts, "
+                    "or has N total parts. Do not repair this by restating most/fewest "
+                    "partitions or all-parts-shaded retrieval."
                 )
             _persist_round(
                 round_id, example_id, rnd, cand, {},

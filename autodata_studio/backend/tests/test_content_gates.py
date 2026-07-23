@@ -51,6 +51,33 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIsNone(fraction_shortcut_reason(candidate))
 
+    def test_fraction_gate_accepts_median_ratio_task(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Considering the shaded fraction of Image 1, Image 2, and Image 3, "
+                "which image has the median ratio between the other two?"
+            ),
+            "options": ["Image 1", "Image 2", "Image 3", "Cannot be determined"],
+        }
+        self.assertIsNone(fraction_shortcut_reason(candidate))
+
+    def test_fraction_gate_accepts_closest_ratio_pair(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "After comparing the shaded fractions of Image 1, Image 2, and Image 3, "
+                "which pair has the smallest absolute ratio difference?"
+            ),
+            "options": [
+                "Image 1 and Image 2",
+                "Image 1 and Image 3",
+                "Image 2 and Image 3",
+                "Cannot be determined",
+            ],
+        }
+        self.assertIsNone(fraction_shortcut_reason(candidate))
+
     def test_fraction_gate_rejects_partition_superlative_even_with_ratio(self):
         candidate = {
             "prompt_pool_id": "iconqa.diagram.fraction.v1",
