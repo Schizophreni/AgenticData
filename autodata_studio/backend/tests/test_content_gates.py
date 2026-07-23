@@ -36,6 +36,14 @@ class ContentGateTest(unittest.TestCase):
             )
         )
 
+    def test_detects_source_what_time_wording(self):
+        self.assertTrue(
+            has_unverified_iconqa_clock_reasoning(
+                "They rode for one hour. What time did they arrive?",
+                {"source": "IconQA"},
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
