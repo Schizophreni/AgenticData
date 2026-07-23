@@ -1,10 +1,26 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from autodata.curation.loop import _score_mcq_or_judge
+from autodata.curation.loop import _score_mcq_or_judge, _stem_similarity
 
 
 class McqScoringTest(unittest.IsolatedAsyncioTestCase):
+    def test_semantic_repeat_similarity_ignores_option_shuffle(self):
+        first = (
+            "Which image shows a shape divided into exactly two equal parts?\n\n"
+            "A. Image 1\nB. Image 2\nC. Image 3\nD. Cannot be determined"
+        )
+        shuffled = (
+            "Which image shows a shape divided into exactly two equal parts?\n\n"
+            "A. Image 3\nB. Image 1\nC. Image 2\nD. Cannot be determined"
+        )
+        self.assertEqual(_stem_similarity(first, shuffled), 1.0)
+
+    def test_materially_different_stems_do_not_trip_repeat_gate(self):
+        equality = "Which image shows a shape divided into exactly two equal parts?"
+        containment = "Which pair of containers has handles but differs in lid shape?"
+        self.assertLess(_stem_similarity(equality, containment), 0.82)
+
     async def test_parseable_three_four_and_five_option_answers_skip_vlm_judge(self):
         judge = object()
         cases = (

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import re
 
 from .. import db, events
@@ -43,6 +44,20 @@ def _extract_mcq_letter(answer: str) -> str | None:
         if matches:
             return str(matches[-1]).upper()
     return None
+
+
+def _normalized_mcq_stem(question: str) -> str:
+    """Normalize only the stem so option shuffling cannot masquerade as novelty."""
+    stem = re.split(r"\n\s*\n\s*[A-E][\.\)]\s*", str(question or ""), maxsplit=1)[0]
+    return "".join(re.findall(r"[a-z0-9\u3400-\u9fff]+", stem.lower()))
+
+
+def _stem_similarity(left: str, right: str) -> float:
+    left_norm = _normalized_mcq_stem(left)
+    right_norm = _normalized_mcq_stem(right)
+    if not left_norm or not right_norm:
+        return 0.0
+    return difflib.SequenceMatcher(None, left_norm, right_norm, autojunk=False).ratio()
 
 
 async def _score_mcq_or_judge(judge: LLMClient, cand: dict, images, role,
@@ -87,6 +102,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
     feedback = None
     last = {}
     last_cand: dict = {"images": images}
+    prior_questions: list[str] = []
 
     for rnd in range(1, cfg.step_budget + 1):
         round_id = db.new_id("rnd")
@@ -107,6 +123,34 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
         last_cand = cand
         _emit(run_id, example_id, "challenger", "done",
               {"round": rnd, "question": cand.get("question", "")})
+
+        # Reject same-question rewrites before spending QV or rollout calls. Prompt-only
+        # instructions are insufficient: challengers often shuffle options or add one
+        # adjective while preserving the same decisive visual relation.
+        question = str(cand.get("question", "")).strip()
+        prior_match = max(
+            ((prior, _stem_similarity(question, prior)) for prior in prior_questions),
+            key=lambda item: item[1],
+            default=("", 0.0),
+        )
+        prior_questions.append(question)
+        if prior_match[1] >= 0.82:
+            feedback = (
+                f"Semantic-repeat gate failed (stem similarity={prior_match[1]:.3f}). "
+                "The new question preserves the same visual decision as this earlier one:\n"
+                f"{prior_match[0]}\n\n"
+                "Choose a genuinely different relation family and target evidence. Do not "
+                "repair this by shuffling options, changing the answer letter, adding an "
+                "adjective, or restating the same equality/count/orientation test."
+            )
+            _persist_round(
+                round_id, example_id, rnd, cand, {},
+                {"semantic_similarity": prior_match[1]},
+                "semantic_repeat", feedback,
+            )
+            _emit(run_id, example_id, "round", "improve",
+                  {"round": rnd, "reason": "semantic_repeat"})
+            continue
 
         # 2. quality verifier --------------------------------------------------
         _emit(run_id, example_id, "verifier", "running", {"round": rnd})
