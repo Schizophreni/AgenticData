@@ -78,6 +78,21 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIsNone(fraction_shortcut_reason(candidate))
 
+    def test_fraction_gate_rejects_matching_partition_count_pair_shortcut(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Which pair of Image 1, Image 2, and Image 3 has the same number of "
+                "equal parts and the same fraction shaded?"
+            ),
+            "options": [
+                "Image 1 and Image 2",
+                "Image 1 and Image 3",
+                "Image 2 and Image 3",
+            ],
+        }
+        self.assertIn("matching raw partition counts", fraction_shortcut_reason(candidate))
+
     def test_fraction_gate_rejects_partition_superlative_even_with_ratio(self):
         candidate = {
             "prompt_pool_id": "iconqa.diagram.fraction.v1",

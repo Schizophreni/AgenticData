@@ -30,6 +30,11 @@ _PARTITION_STEM_SHORTCUT = re.compile(
     r"\s+(?:equal\s+)?(?:parts?|partitions?))\b"
     r"|最多(?:的)?(?:等份|分区)|最少(?:的)?(?:等份|分区)|恰好(?:被)?分成\s*\d+\s*份"
 )
+_MATCHING_PARTITION_COUNT = re.compile(
+    r"\b(?:same|matching|equal)\s+(?:number\s+of\s+)?(?:equal\s+)?"
+    r"(?:parts?|partitions?)\b"
+    r"|(?:等份|分区|部分)(?:的)?数量相同|相同数量的(?:等份|分区|部分)"
+)
 _DIRECT_IMAGE_RETRIEVAL = re.compile(
     r"\bwhich\s+(?:of\s+the\s+(?:following|three|four)\s+)?images?\s+(?:shows?|has|is)\b"
     r"|哪(?:一(?:个|张|幅)?|个|张|幅)图(?:像)?(?:显示|具有|是)"
@@ -84,6 +89,11 @@ def fraction_shortcut_reason(candidate: dict[str, Any] | None) -> str | None:
         return (
             "fraction stem asks for an exact or extreme partition count; adding a "
             "separate ratio clause does not remove this shortcut"
+        )
+    if _MATCHING_PARTITION_COUNT.search(stem):
+        return (
+            "fraction stem selects by matching raw partition counts; pair, median, "
+            "and outlier tasks must be decided only from derived shaded ratios"
         )
     if not _FRACTION_REASONING_TERMS.search(text):
         return (
