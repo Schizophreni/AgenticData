@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -u
+
+# Resumable supervisor for the 10k accepted-MCQ production run. Each child run
+# handles a bounded shard; the SQLite DB is authoritative across restarts.
+ROOT_DIR="/inspire/hdd/project/video-understanding/public/personal/wran/projects/Zhihu"
+SCRATCH_DIR="/tmp/claude-0/-inspire-hdd-project-video-understanding-public-personal-wran-projects-Zhihu/8015243a-5b19-453d-b06c-99d1b532e25a/scratchpad"
+BATCH_SCRIPT="${SCRATCH_DIR}/batch_mcq.py"
+DB_PATH="${MCQ_DB:-${SCRATCH_DIR}/batch_mcq_235b.sqlite3}"
+OUTPUT_PATH="${MCQ_OUTPUT:-${SCRATCH_DIR}/batch_mcq_235b_accepted.jsonl}"
+STATE_PATH="${MCQ_STATE:-${ROOT_DIR}/autodata_studio/backend/var/mcq_10k.cursor}"
+STATUS_PATH="${MCQ_STATUS:-${ROOT_DIR}/autodata_studio/backend/var/mcq_10k.status.json}"
+LOCK_PATH="${MCQ_LOCK:-${ROOT_DIR}/autodata_studio/backend/var/mcq_10k.lock}"
+TARGET_ACCEPTED="${MCQ_TARGET_ACCEPTED:-10000}"
+SHARD_DOCS="${MCQ_SHARD_DOCS:-50}"
+GATE_MULTIPLIER="${MCQ_GATE_MULTIPLIER:-8}"
+
+mkdir -p "$(dirname "${STATE_PATH}")"
+exec 9>"${LOCK_PATH}"
+if ! flock -n 9; then
+  echo "another mcq_10k supervisor already holds ${LOCK_PATH}" >&2
+  exit 2
+fi
+
+accepted_count() {
+  if [[ ! -f "${DB_PATH}" ]]; then
+    echo 0
+    return
+  fi
+  sqlite3 "${DB_PATH}" "SELECT count(*) FROM examples WHERE status='accepted';" 2>/dev/null || echo 0
+}
+
+write_status() {
+  local phase="$1" accepted="$2" cursor="$3" note="${4:-}"
+  local tmp="${STATUS_PATH}.tmp"
+  jq -n \
+    --arg phase "${phase}" \
+    --arg note "${note}" \
+    --argjson accepted "${accepted}" \
+    --argjson target "${TARGET_ACCEPTED}" \
+    --argjson cursor "${cursor}" \
+    --arg updated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{phase:$phase,accepted:$accepted,target:$target,cursor:$cursor,note:$note,updated_at:$updated_at}' >"${tmp}"
+  mv "${tmp}" "${STATUS_PATH}"
+}
+
+models_ready() {
+  local spec port expected body model
+  for spec in "8004:qwen2.5-vl-7b" "8005:qwen3-vl-235b" "8007:qwen3-vl-235b"; do
+    port="${spec%%:*}"
+    expected="${spec#*:}"
+    body="$(env -u http_proxy -u https_proxy -u all_proxy \
+      -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \
+      curl --noproxy '*' -fsS --max-time 8 "http://127.0.0.1:${port}/v1/models" 2>/dev/null)" || return 1
+    model="$(jq -r '.data[0].id // empty' <<<"${body}")"
+    [[ "${model}" == *"${expected}"* ]] || return 1
+  done
+}
+
+cursor=0
+if [[ -s "${STATE_PATH}" ]]; then
+  read -r cursor <"${STATE_PATH}"
+fi
+[[ "${cursor}" =~ ^[0-9]+$ ]] || cursor=0
+
+while true; do
+  accepted="$(accepted_count)"
+  if (( accepted >= TARGET_ACCEPTED )); then
+    write_status "done" "${accepted}" "${cursor}" "target reached"
+    echo "TARGET REACHED accepted=${accepted}/${TARGET_ACCEPTED}"
+    exit 0
+  fi
+
+  if ! models_ready; then
+    write_status "waiting_for_models" "${accepted}" "${cursor}" "need 8004, 8005 and 8007"
+    echo "WAIT models unavailable; accepted=${accepted}/${TARGET_ACCEPTED} cursor=${cursor}"
+    sleep 30
+    continue
+  fi
+
+  remaining=$((TARGET_ACCEPTED - accepted))
+  shard="${SHARD_DOCS}"
+  if (( remaining < shard )); then shard="${remaining}"; fi
+  write_status "running" "${accepted}" "${cursor}" "starting shard_docs=${shard}"
+  echo "START shard cursor=${cursor} docs=${shard} accepted=${accepted}/${TARGET_ACCEPTED}"
+
+  env MCQ_RESUME=1 MCQ_DB="${DB_PATH}" MCQ_OUTPUT="${OUTPUT_PATH}" \
+    MCQ_DOCS="${shard}" MCQ_START="${cursor}" MCQ_GATE=1 \
+    MCQ_GATE_MULTIPLIER="${GATE_MULTIPLIER}" \
+    python -u "${BATCH_SCRIPT}" &
+  child_pid=$!
+  while kill -0 "${child_pid}" 2>/dev/null; do
+    accepted="$(accepted_count)"
+    write_status "running" "${accepted}" "${cursor}" \
+      "child_pid=${child_pid} shard_docs=${shard}"
+    sleep 30
+  done
+  wait "${child_pid}"
+  rc=$?
+
+  if (( rc == 0 )); then
+    # The batch reserves target*multiplier positions from the stride-selected pool.
+    cursor=$((cursor + shard * GATE_MULTIPLIER))
+    printf '%s\n' "${cursor}" >"${STATE_PATH}"
+    accepted="$(accepted_count)"
+    write_status "between_shards" "${accepted}" "${cursor}" "previous shard completed"
+    echo "FINISH shard accepted=${accepted}/${TARGET_ACCEPTED} next_cursor=${cursor}"
+  else
+    accepted="$(accepted_count)"
+    write_status "retrying_shard" "${accepted}" "${cursor}" "child exit=${rc}"
+    echo "RETRY shard cursor=${cursor} child_exit=${rc} accepted=${accepted}/${TARGET_ACCEPTED}" >&2
+    sleep 30
+  fi
+done

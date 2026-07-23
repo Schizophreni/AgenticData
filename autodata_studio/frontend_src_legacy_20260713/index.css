@@ -1,0 +1,85 @@
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #0a0f1c;
+  color: #e9eef9;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Technical eyebrow label */
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #5c6884;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #26334f;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* running LED / status pulse */
+@keyframes led {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px 0 currentColor; }
+  50% { opacity: 0.4; box-shadow: 0 0 2px 0 currentColor; }
+}
+.led-run {
+  animation: led 1s ease-in-out infinite;
+}
+
+/* caliper interval sweep-in */
+@keyframes sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.sweep {
+  transform-origin: left center;
+  animation: sweep 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* focus ring — amber, visible */
+*:focus-visible {
+  outline: 2px solid #f4a63a;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .led-run,
+  .sweep {
+    animation: none !important;
+  }
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

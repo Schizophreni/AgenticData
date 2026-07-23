@@ -1,0 +1,48 @@
+# Local agent/session metadata
+.agents/
+.codex/
+.claude/
+.conductor/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Runtime state and databases
+autodata_studio/backend/var/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+
+# Logs, process state, and temporary files
+*.log
+*.pid
+*.sock
+*.tmp
+*.swp
+.DS_Store
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated archives
+*.tgz
+*.tar
+*.tar.gz
+*.zip
