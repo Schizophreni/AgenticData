@@ -208,8 +208,7 @@ async def run_doc_loop(run_id: str, example_id: str, doc: dict, recipe: dict,
     source_metadata = doc.get("_source_metadata") or doc.get("source_metadata")
     prompt_spec = select_prompt(relation_map, source_metadata)
     type_rubric = (
-        "\n\n=== TYPE-SPECIFIC SYNTHESIS INSTRUCTIONS ===\n"
-        f"Prompt pool route: {prompt_spec.id}\n"
+        "\n\nType-specific synthesis instructions:\n"
         f"{prompt_spec.instruction}\n"
         "These instructions refine but never override grounding, output schema, language, "
         "option-count, answer-mode, or quality-verification requirements."
