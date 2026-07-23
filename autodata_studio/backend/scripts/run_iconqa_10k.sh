@@ -14,6 +14,10 @@ STATUS_PATH="${MCQ_STATUS:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.st
 LOCK_PATH="${MCQ_LOCK:-${ROOT_DIR}/autodata_studio/backend/var/iconqa_10k.lock}"
 TARGET_ACCEPTED="${MCQ_TARGET_ACCEPTED:-10000}"
 SHARD_DOCS="${MCQ_SHARD_DOCS:-50}"
+WEAK_PORT="${MCQ_PRODUCTION_WEAK_PORT:-8104}"
+STRONG_PORT="${MCQ_PRODUCTION_STRONG_PORT:-8105}"
+CHALLENGER_PORT="${MCQ_PRODUCTION_CHALLENGER_PORT:-8110}"
+JUDGE_PORT="${MCQ_PRODUCTION_JUDGE_PORT:-8111}"
 
 mkdir -p "$(dirname "${STATE_PATH}")"
 exec 9>"${LOCK_PATH}"
@@ -49,10 +53,10 @@ write_status() {
 models_ready() {
   local spec port expected body model
   for spec in \
-    "8104:qwen2.5-vl-7b" \
-    "8105:qwen3-vl-235b" \
-    "8107:qwen3-vl-235b" \
-    "8108:qwen3-vl-235b"; do
+    "${WEAK_PORT}:qwen2.5-vl-7b" \
+    "${STRONG_PORT}:qwen3-vl-235b" \
+    "${CHALLENGER_PORT}:qwen3-vl-235b" \
+    "${JUDGE_PORT}:qwen3-vl-235b"; do
     port="${spec%%:*}"
     expected="${spec#*:}"
     body="$(env -u http_proxy -u https_proxy -u all_proxy \
@@ -89,7 +93,7 @@ while true; do
 
   if ! models_ready; then
     write_status "waiting_for_models" "${accepted}" "${cursor}" \
-      "need 8104, 8105, 8107 and 8108"
+      "need weak=${WEAK_PORT}, strong=${STRONG_PORT}, challenger=${CHALLENGER_PORT}, judge=${JUDGE_PORT}"
     sleep 30
     continue
   fi
@@ -110,10 +114,10 @@ while true; do
     MCQ_START="${cursor}" \
     MCQ_MAX_INFLIGHT="${MCQ_PRODUCTION_MAX_INFLIGHT:-8}" \
     MCQ_HTTP_TIMEOUT=600 \
-    MCQ_WEAK_PORT=8104 \
-    MCQ_STRONG_PORT=8105 \
-    MCQ_CHALLENGER_PORT=8107 \
-    MCQ_JUDGE_PORT=8108 \
+    MCQ_WEAK_PORT="${WEAK_PORT}" \
+    MCQ_STRONG_PORT="${STRONG_PORT}" \
+    MCQ_CHALLENGER_PORT="${CHALLENGER_PORT}" \
+    MCQ_JUDGE_PORT="${JUDGE_PORT}" \
     MCQ_CHALLENGER_MAX_TOKENS=512 \
     MCQ_JUDGE_MAX_TOKENS=512 \
     python -u "${BATCH_SCRIPT}" &
