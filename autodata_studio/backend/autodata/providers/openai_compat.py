@@ -51,10 +51,28 @@ class OpenAICompatClient(LLMClient):
         # example, since only the challenger is wrapped in a per-round try. Other 4xx is our
         # own bad request: surface the body and raise immediately.
         last: Exception | None = None
+        fresh_connection = False
         for attempt in range(config.HTTP_MAX_RETRIES):
             try:
-                resp = await self._client.post(f"{self.base_url}/chat/completions",
-                                               json=payload, headers=headers)
+                if fresh_connection:
+                    # A local vLLM server can close an idle keep-alive socket while
+                    # httpx still has it in the shared pool. Retrying through that
+                    # pool may repeatedly hit the same stale connection. Use an
+                    # isolated client after a transport failure; do not close or
+                    # replace the shared client because other rollout coroutines
+                    # may be using it concurrently.
+                    async with httpx.AsyncClient(timeout=config.HTTP_TIMEOUT) as retry_client:
+                        resp = await retry_client.post(
+                            f"{self.base_url}/chat/completions",
+                            json=payload,
+                            headers=headers,
+                        )
+                else:
+                    resp = await self._client.post(
+                        f"{self.base_url}/chat/completions",
+                        json=payload,
+                        headers=headers,
+                    )
                 resp.raise_for_status()
                 break
             except httpx.HTTPStatusError as e:
@@ -72,6 +90,7 @@ class OpenAICompatClient(LLMClient):
                     continue
             except httpx.TransportError as e:
                 last = e
+                fresh_connection = True
             if attempt < config.HTTP_MAX_RETRIES - 1:
                 await asyncio.sleep(2 ** attempt)
         else:
