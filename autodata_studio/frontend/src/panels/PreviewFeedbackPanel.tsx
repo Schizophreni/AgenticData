@@ -257,7 +257,7 @@ export default function PreviewFeedbackPanel() {
                         alt={`source ${i + 1}`}
                         onError={(e) => (e.currentTarget.style.opacity = "0.2")}
                         onClick={() => setLightbox(i)}
-                        className="size-24 cursor-zoom-in rounded-lg bg-elevated object-cover transition-opacity hover:opacity-80"
+                        className="h-24 w-auto max-w-72 cursor-zoom-in rounded-lg bg-elevated object-contain transition-opacity hover:opacity-80"
                       />
                       <span className="absolute top-1 left-1 rounded bg-black/70 px-1 font-mono text-[10px] text-white">
                         {i + 1}
