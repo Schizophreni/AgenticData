@@ -31,6 +31,26 @@ class ContentGateTest(unittest.TestCase):
         }
         self.assertIsNone(fraction_shortcut_reason(candidate))
 
+    def test_fraction_gate_accepts_plural_fraction_ordering(self):
+        candidate = {
+            "prompt_pool_id": "iconqa.diagram.fraction.v1",
+            "question": (
+                "Which ordering of the shaded fractions in Image 1, Image 2, and "
+                "Image 3 is correct?\n\n"
+                "A. Image 1 > Image 2 > Image 3\n"
+                "B. Image 2 > Image 3 > Image 1\n"
+                "C. Image 3 > Image 1 > Image 2\n"
+                "D. Cannot be determined"
+            ),
+            "options": [
+                "A. Image 1 > Image 2 > Image 3",
+                "B. Image 2 > Image 3 > Image 1",
+                "C. Image 3 > Image 1 > Image 2",
+                "D. Cannot be determined",
+            ],
+        }
+        self.assertIsNone(fraction_shortcut_reason(candidate))
+
     def test_fraction_gate_rejects_partition_superlative_even_with_ratio(self):
         candidate = {
             "prompt_pool_id": "iconqa.diagram.fraction.v1",

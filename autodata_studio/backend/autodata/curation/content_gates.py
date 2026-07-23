@@ -11,7 +11,8 @@ _CLOCK_TERMS = re.compile(
     r"|时钟|钟面|表盘|时针|分针|小时|点钟|几点"
 )
 _FRACTION_REASONING_TERMS = re.compile(
-    r"\b(?:fraction|ratio|proportion|relative to|of the whole|shaded (?:area|portion))\b"
+    r"\b(?:fractions?|ratios?|proportions?|relative to|of the whole|"
+    r"shaded (?:area|portion))\b"
     r"|比例|分数|几分之|占(?:整个|全体)|涂色部分"
 )
 _FRACTION_COMPARISON_TERMS = re.compile(
