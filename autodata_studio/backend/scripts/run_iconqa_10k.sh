@@ -108,7 +108,7 @@ while true; do
     MCQ_OUTPUT="${OUTPUT_PATH}" \
     MCQ_DOCS="${shard}" \
     MCQ_START="${cursor}" \
-    MCQ_MAX_INFLIGHT=4 \
+    MCQ_MAX_INFLIGHT="${MCQ_MAX_INFLIGHT:-8}" \
     MCQ_HTTP_TIMEOUT=600 \
     MCQ_WEAK_PORT=8104 \
     MCQ_STRONG_PORT=8105 \
