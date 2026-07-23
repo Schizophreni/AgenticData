@@ -64,12 +64,13 @@ models_ready() {
   done
 }
 
-# The pilot consumes source positions 0-4. A persisted cursor always wins.
-cursor=5
+# The production stream always begins at zero. Pilot examples may come from a
+# later hard bucket; MCQ_RESUME skips any accepted doc IDs when production reaches them.
+cursor=0
 if [[ -s "${STATE_PATH}" ]]; then
   read -r cursor <"${STATE_PATH}"
 fi
-[[ "${cursor}" =~ ^[0-9]+$ ]] || cursor=5
+[[ "${cursor}" =~ ^[0-9]+$ ]] || cursor=0
 
 # Do not contend with the five-item validation run.
 while tmux has-session -t iconqa-pilot 2>/dev/null; do
@@ -107,7 +108,7 @@ while true; do
     MCQ_OUTPUT="${OUTPUT_PATH}" \
     MCQ_DOCS="${shard}" \
     MCQ_START="${cursor}" \
-    MCQ_MAX_INFLIGHT=2 \
+    MCQ_MAX_INFLIGHT=4 \
     MCQ_HTTP_TIMEOUT=600 \
     MCQ_WEAK_PORT=8104 \
     MCQ_STRONG_PORT=8105 \
