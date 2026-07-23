@@ -250,14 +250,20 @@ export default function PreviewFeedbackPanel() {
                 <div className="channel-label mb-2">source images</div>
                 <div className="flex flex-wrap gap-2">
                   {detail.images.map((src: string, i: number) => (
-                    <div key={i} className="relative">
+                    <div
+                      key={i}
+                      className={cn(
+                        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-elevated",
+                        i === 0 ? "h-32 w-80" : "size-32"
+                      )}
+                    >
                       <img
                         src={imageSrc(src)}
                         loading="lazy"
                         alt={`source ${i + 1}`}
                         onError={(e) => (e.currentTarget.style.opacity = "0.2")}
                         onClick={() => setLightbox(i)}
-                        className="h-24 w-auto max-w-72 cursor-zoom-in rounded-lg bg-elevated object-contain transition-opacity hover:opacity-80"
+                        className="h-full w-full cursor-zoom-in object-contain transition-opacity hover:opacity-80"
                       />
                       <span className="absolute top-1 left-1 rounded bg-black/70 px-1 font-mono text-[10px] text-white">
                         {i + 1}
